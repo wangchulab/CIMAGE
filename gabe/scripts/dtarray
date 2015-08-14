@@ -1,0 +1,170 @@
+#!/usr/bin/perl
+############################################################################
+#
+#  DTArray v1.91
+#
+#  Extracts IPI numbers and spectral counts from
+#  DTASelect-filter.txt files.  If no params file is specified, it
+#  will search through directories one-level above the current directory
+#  for DTASelect data.  Otherwise, it will search directories that are
+#  specified in a dtarray.params file.  DTASelect data is then 
+#  combined them into one master array.  Saves array
+#  to dtarray.txt by default or to a filename specified
+#  as a commandline argument.
+#       Gabe Simon (c)2009
+#
+#  v1.91 - only take first 21 chars of accession number
+#  v1.9  - sorted directories before adding to dtarray.params
+#
+############################################################################
+
+#use Data::Dumper;
+
+
+#--- Get filename from command line argument.  if none given use 'dtarray.txt' be default
+unless(@ARGV){
+        $outputfile = "dtarray.txt";
+        } else {
+        $outputfile = $ARGV[0];
+}
+
+#--- Load dtarray.params file which contains file names and notes
+#--- if no dtarray.params file is found, create one by adding all of the directories above the current one that contain dtaselect-filter.txt files
+
+if (-e "dtarray.params"){
+    open (TEXT, 'dtarray.params');
+} else {
+    opendir(DIR, ".") or die "cannot read directory";
+    @dircontents = grep !/^\.\.?$/, readdir(DIR);
+    closedir(DIR);
+
+    print "\nGenerating dtarray.params from directory tree:\n";
+    foreach (@dircontents) {
+	if (-d $_) {
+#	    print "$_\\dtaselect-filter.txt\n";
+	    if (-e "$_\/DTASelect-filter.txt") {
+		push (@usedirs, $_);
+		++$dummy;
+	    }
+	}
+    }
+
+    @sorteddirs = sort {$a cmp $b} @usedirs;
+
+    die "\n\n\tERROR! No valid directories found!\n\n" if (scalar @usedirs < 1);
+    open (POUT, ">dtarray.params") or die "cannot open dtarray.params for write!\n";
+
+    foreach (@sorteddirs) {
+	print "$_\t$_\/\n";
+	print POUT "$_\t$_\/\n";
+    }
+
+    print "\ndone! added $dummy directories to dtarray.params\n\n";
+    close POUT;
+    open (TEXT, 'dtarray.params');
+}
+
+@txtbin = <TEXT>;
+
+#--- open the output file for writing unless it is already open in another program
+unless(open(OUTPUT, ">$outputfile")){
+        print "Cannot open file \"$outputfile\" to write to!\n\n";
+        exit;
+}
+
+#--- read directory locations into @infiles and run-names with directories into @nameholder
+for ($i = 0; $i < scalar @txtbin; ++$i) {
+    @txtbin[$i]=~/^.*\t(.*)/;
+    push (@infiles, $1);
+    @txtbin[$i] =~ /^(.*)\t/;
+    @nameholder[$i] = ( $1, $infiles[$i] );
+}
+
+
+print OUTPUT 'Protein' . chr(9);  #header to the IPI number column
+
+
+
+#--- this loop extracts IPI numbers, protein names, and spectral counts from dtaselect-filter.txt files specified in dtarray.params and adds them to the correct row of %curry or, if the IPI number doesn't exist in %curry it adds it to %curry and fills in all previous columns with 0s
+
+for ($filenum = 0; $filenum < scalar @infiles; $filenum++){
+
+    print OUTPUT $nameholder[$filenum] . chr(9);        #print the header to each column (names specified in dtarray.params)
+    print 'adding ' .  $nameholder[$filenum] . '... ' . "\n";   #a little visible output so you know its working...
+
+#    print "\n\ntrying to open -filter.txt file at -$infiles[$filenum]-\n\n";
+
+#    print "DTASelect-filter.txt\n";
+
+
+    open (TEXT, $infiles[$filenum] .  'DTASelect-filter.txt') or die "\n\ncould not find DTASelect-filter.txt file in $infiles[$filenum] -- aborting!\n\n";  #open a dtaselect-filter.txt file for extraction
+    @txtbin = <TEXT>;                                           #and load it into @txtbin
+
+    for ($position = 0; $position < scalar @txtbin; ++$position){       #go through the file line-by-line
+	
+            if (@txtbin[$position] =~ /\d+%/ ) {     #identifies header lines by the sequence-coverage percent-sign
+
+		    @lineholder = split(/\t/, $txtbin[$position]);
+		    #$curipi = substr($txtbin[$position], 4, 11);    #read the IPI number into $curipi
+		    $tempid = $lineholder[0];
+		    if ($tempid =~ /^IPI:/) {
+			$tempid =~ m/IPI:(.*)\./;
+			$tempid = $1;
+		    }
+		    $curipi = $tempid;
+		    
+		    $curipi = substr($curipi,0,21) if (length($curipi) > 21);  # only take 1st 21 characters of accession number
+
+		    $txtbin[$position]=~/\t\d+\t(\d+)\t/;           #search for the spectral counts (the number in between the second and third TAB characters after the IPI number)
+		    $cursc = $1;                                    #add the spectral counts value to $cursc
+		
+                if (defined @curry{$curipi}){                   #if the IPI number already exists (because it was read from previous dtaselect-filter.txt files) add the $cursc to the appropriate column
+		    $curry{$curipi}[$filenum] = $cursc;
+                } else {                                        #if not, add the IPI number to %curry and fill in all previous columns with zeros
+                    push (@ipiholder, $curipi);                 #add the IPI number to the @ipiholder array which contains all IPI numbers from all files
+                    $txtbin[$position]=~/U\t(.*)$/;      #extract the name of the protein (the remainder of the line following the 'Tax_ID' statement)
+		    $namer{$curipi} = $1 . 'xxxxx';
+		    $namer{$curipi} =~ s/Tax_Id=\d+//;
+		    
+
+                            for ($j = 0; $j < $filenum; ++$j){  #here's where the zeros are added
+				$curry{$curipi}[$j] = 0;
+			    }
+
+                    $curry{$curipi}[$filenum] = $cursc;         #after the zeros have been added add the spectral counts to the final (current) column
+		}
+	    }
+	}
+            for ($k = 0; $k< scalar @ipiholder; $k++){          #cycle through all IPI numbers and add a zero to the new column if it didn't contain any spectral counts of that IPI number
+		if (defined @{$curry{$ipiholder[$k]}}[$filenum]){
+		} else {
+		    push (@{@curry{$ipiholder[$k]}}, 0);
+		}
+		}
+
+    close TEXT;         #close current dtaselect-filter.txt file
+}                       #and repeat with the next dtaselect-filter.txt, if there is one
+	     
+#print Dumper(\%curry);
+
+#--- now @ipiholder contains all of the IPI numbers from all of the files
+#--- and %curry contains rows of spectral counts for each IPI number
+
+print OUTPUT "\n";
+
+
+
+
+foreach $curipi (@ipiholder) {          #print the data in %curry to the output file
+    print OUTPUT $curipi . ' - ' . $namer{$curipi} . chr(9);
+    foreach $cursc (@{@curry{$curipi}}){
+        print OUTPUT $cursc . chr(9);
+    }
+    print OUTPUT "\n";
+
+}
+
+close(OUTPUT);
+print 'done!  array saved in file: ' . $outputfile . "\n";
+
+#print Dumper(\@nameholder);

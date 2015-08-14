@@ -1,0 +1,91 @@
+useDynLib(xcms)
+
+import("methods")
+importFrom("graphics", "plot")
+
+export(
+       "etg",
+       "medianFilter",
+       "retexp",
+       "specNoise",
+       "specPeaks",
+       "SSgauss",
+       "xcmsRaw",
+       "xcmsSet",
+       "xcmsFragments",
+       "xcmsPapply"
+       )
+
+S3method(c, xcmsSet)
+S3method(image, xcmsRaw)
+S3method(plot, xcmsEIC)
+S3method(split, xcmsSet)
+
+exportClasses(
+              "xcmsEIC",
+              "xcmsRaw",
+              "xcmsSet",
+	      "xcmsFragments"
+              )
+
+exportMethods(
+              "calibrate",
+              "collect",
+              "filepaths",
+              "filepaths<-",
+              "diffreport",
+              "fillPeaks",
+              "findPeaks.centWave",
+              "findPeaks.matchedFilter",
+              "findPeaks.MSW",
+              "findPeaks",
+              "getEIC",
+              "getPeaks",
+              "getScan",
+              "getSpec",
+              "group",
+              "group.density",
+              "group.mzClust",
+              "groupidx",
+              "groupidx<-",
+              "groupnames",
+              "groups",
+              "groups<-",
+              "groupval",
+              "mzrange",
+              "peaks",
+              "peaks<-",
+              "phenoData",
+              "phenoData<-",
+              "plotChrom",
+              "plotPeaks",
+              "plotRaw",
+              "plotrt",
+              "plotScan",
+              "plotSpec",
+              "plotSurf",
+              "plotTIC",
+              "plotTree",
+              "profinfo",
+              "profinfo<-",
+              "profMedFilt",
+              "profMethod",
+              "profMethod<-",
+              "profMz",
+              "profRange",
+              "profStep",
+              "profStep<-",
+              "rawEIC",
+              "retcor",
+              "revMz",
+              "rtrange",
+              "sampclass",
+              "sampclass<-",
+              "sampnames",
+              "sampnames<-",
+              "searchMetlin",
+              "show",
+              "simSearch",
+              "sortMz",
+              "write.cdf"
+              )

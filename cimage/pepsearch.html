@@ -1,0 +1,19 @@
+<HTML><HEAD>
+
+<SCRIPT>
+    function clearDefault(el){
+if(el.defaultValue==el.value) el.value=""
+}
+</SCRIPT>
+
+
+</HEAD><BODY>
+<FONT FACE=Arial>
+
+<FORM METHOD=post ACTION="/cgi-bin/cravatt/wblasta2.pl" ENCTYPE="multipart/form-data">
+Search by peptide:
+<INPUT TYPE="text" NAME="sstring" VALUE="peptide sequence" onfocus="clearDefault(this)">
+<INPUT TYPE=submit VALUE="Submit"></FORM><BR>
+
+</BODY>
+</HTML>

@@ -1,0 +1,201 @@
+#!/usr/bin/perl
+
+########################################################################
+#
+# quantitative PROTOMAPper - v0.2 (c) 2009 Gabe Simon
+#
+# This script creates a .QPMAP file from SILAC PROTOMAP data suitable
+# for displaying quantitative peptographs using scripps on the TSRI
+# webserver such as:
+#
+# /web/cgi-bin/cravatt/search_qpmap.pl
+# /web/cgi-bin/cravatt/qpmap_rec.pl
+# /web/cgi-bin/cravatt/qpg-maker.pl
+#
+# .QPMAP files can be displayed by the normal (pmap2rec.pl) search
+# and retrieval scripts as for the normal PROTOMAP data.
+#
+########################################################################
+
+
+use Cwd;
+$absdir = getcwd;
+
+#print "$curdir\n";
+
+print "\nQuantitative PROTOMAPper v0.2 (c) 2009 Gabe Simon\n\n";
+
+####################### parse params file ####################################
+
+open (PARAMS, 'qpmap.params') or die "cannot open params file: qpmap.params";
+@params = <PARAMS>;
+close PARAMS;
+
+for ($i = 0; $i < scalar @params; ++$i) {
+    if ($params[$i] =~ /^\#+\s*Options/) {
+	++$i;
+	while ($params[$i] !~ /^#/) {
+	    if ($params[$i] !~ /^\s/) {
+		@curoption = split(/\s+/,$params[$i]);
+		$option{$curoption[0]} = $curoption[1];
+	    }
+	    ++$i;
+	}
+    }
+    if ($params[$i] =~ /^\#+\s*Band locations/) {
+	++$i;
+	while (($params[$i] !~ /^\#/) && ($i < scalar @params)){
+	    if (($params[$i] !~ /^\#/) && ($params[$i] !~ /^\s+$/)){
+		chomp $params[$i];
+		if (-d $params[$i]) {
+		    push (@dirs, $params[$i]);
+		} else {
+		    die "\n\tERROR! $params[$i] could not be found!!!\n\n";
+		}
+	    }
+	    ++$i;
+	}
+    }
+}
+
+
+print "\noptions:\n";
+foreach (keys %option) {
+    print "\t$_: $option{$_}\n";
+}
+print "\n";
+
+$dbase = $option{"database"};
+$nb = $option{"numbands"};
+$n = $option{"n"};
+$r2min = $option{"r2min"};
+$numdirs = scalar @dirs;
+$expecteddirs = $n * $nb;
+$usefixedrats = $option{"use_fixed_peprats"};
+
+
+print "n=$n, nb=$nb\n";
+
+print "numdirs: $numdirs, expected: $expecteddirs\n";
+
+if ($expecteddirs != $numdirs) {
+    die "\n\n\tERROR!  The number of directories found ($numdirs) did not match the number expected (n=" . $option{"n"} . " * numbands=" . $option{"numbands"} . " = $expecteddirs)\n\n";
+}
+
+##################### justify database (read in sequences, remove spaces,etc) #########################################
+
+open (DB, $dbase) or die "cannot open database!\n";
+@db = <DB>;
+close DB;
+print "\njustifying database\n";
+for ($i = 0; $i < scalar @db; ++$i) {
+    if ($db[$i] =~ /^>(\S+)/) {
+	$curdescription = $1;
+	$curaccstring = $curdescription;
+	$curaccstring = substr($curdescription,0,21) if (length($curdescription) > 21);
+	$curseq = "";
+	++$i;
+#	print "$i\n";
+	while (($db[$i] !~ /^>/) && ($i+1 < scalar @db)) {
+	    $db[$i] =~ s/\s//g;
+	    $curseq .= $db[$i];
+	    last if (length($curseq) > 30000);
+	    ++$i;
+	}
+	--$i;
+    }
+#    print "$curaccstring\n";
+    if (($curaccstring =~ /(IPI\d+\.\d+)/) && ($curaccstring !~ /Reverse_/)){
+	$curaccstring = $1;
+    }
+    $dbseqholder{$curaccstring} = [$curdescription, $curseq];
+}
+
+print "database justified!  contains " . scalar (keys %dbseqholder) . " entries\n\n";
+
+##################################################################################################################
+
+for ($curreplicate = 0; $curreplicate < $n; ++$curreplicate) {
+
+    for ($i = 0; $i < $nb; ++$i) {
+	$curdir = $i + ($curreplicate * $nb);
+
+	if ($dirs[$curdir] !~ /\/$/) {
+	    $dirs[$curdir] .= '/';
+	}
+	print "$dirs[$curdir]: ";
+	
+	if ($usefixedrats == 1) {
+	    $curoutputfile = $dirs[$curdir] . "dta/output/fixed_output.to_excel.txt";
+	} else {
+	    $curoutputfile = $dirs[$curdir] . "dta/output/output_rt_10_sn_2.5.to_excel.txt";
+	}
+
+
+	if (-e $curoutputfile) {
+	    print "output file found\n";
+	    open (OUTPUT, $curoutputfile) or die "cannot read $curoutputfile";
+	    @output = <OUTPUT>;
+	    close OUTPUT;
+	    
+	    for ($outline = 1; $outline < scalar @output; ++$outline) {
+		@currow = split(/\t/,$output[$outline]);
+		$curacc = $currow[1];
+		$currow[4] =~ /\.([^\.]*)\./g;
+		$pepseq = $1;
+		$currat = $currow[8];
+		$description = $currow[2];
+		$curr2 = $currow[11];
+
+		print "\trep " . ($curreplicate+1) . " of $n, band " . ($i+1) . " of $nb, $outline of " . (scalar (@output)-1) . ": $curacc $pepseq,$currat";
+		
+		if ( ($curr2 >= $r2min) ) {
+
+		    if (($curacc =~ /IPI\d+\.\d+/) && ($curacc !~ /Reverse_/)){
+			$qpmapholder{$curacc}[0] = $dbseqholder{$curacc}[0] . " $description";
+			$qpmapholder{$curacc}[1] = $dbseqholder{$curacc}[1];
+			push ( @{$qpmapholder{$curacc}[$i+2]}, "$pepseq,$currat");
+			print " :: $curacc\n";
+		    } else {
+			foreach $accstring (keys %dbseqholder) {
+			    if ($accstring =~ /^$curacc/g) {
+				print " :: $accstring\n";
+				$qpmapholder{$accstring}[0] = $dbseqholder{$accstring}[0] . " $description";
+				$qpmapholder{$accstring}[1] = $dbseqholder{$accstring}[1];
+				push ( @{$qpmapholder{$accstring}[$i+2]}, "$pepseq,$currat" );
+			    }
+			}
+		    }
+		} else {
+		    print " :: r2 ($curr2) did not meet cut-off ($r2min).  Skipping.\n";
+		}
+
+	    }
+	} else {
+	    print "ERROR: could not find output file!\n";
+#	exit;
+	}
+    }
+}
+
+open (QPMAP, '>alldata.qpmap') or die "cannot write to alldata.qpmap";
+
+print QPMAP "Protein_n$n" . "_nb$nb" . "_absloc:$absdir\tSequence\t";
+for ($i = 0; $i < $nb; ++$i) {
+    print QPMAP "band " . ($i+1);
+    print QPMAP "\t" if ($i < $nb-1);
+}
+print QPMAP "\n";
+
+foreach $acc (keys %qpmapholder) {
+    print QPMAP $qpmapholder{$acc}[0] . "\t" . $qpmapholder{$acc}[1] . "\t";
+
+    for ($i = 0; $i < scalar @dirs; ++$i) {
+	$curpepratstring = join (',', @{$qpmapholder{$acc}[$i+2]} );
+	print QPMAP $curpepratstring;
+	print QPMAP "\t" if ($i < scalar @dirs -1);
+    }
+    print QPMAP "\n";
+}
+
+print "\n\n\tdone!\n\n";

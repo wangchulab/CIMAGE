@@ -1,0 +1,19 @@
+1. install R 2.8.1
+
+2. install netCDF
+   download netCDF source from here: http://www.unidata.ucar.edu/software/netcdf/
+   or wget this file: ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf.tar.gz
+   
+   configure
+   make distclean && (./configure --enable-shared && make check install) 
+   make install
+   (this based on http://tinyurl.com/yl37olt)
+
+3. install XCMS:
+   start R
+   source("http://bioconductor.org/biocLite.R")
+   biocLite("xcms")
+
+4. if necessary, create a symlink to the libnetcdf.so.4 file (in this case from /usr/src/netcdf/netcdf-4.0.1/libsrc/.libs/libnetcdf.so.4)in the /usr/lib64/ folder
+
+5. xcms should work now

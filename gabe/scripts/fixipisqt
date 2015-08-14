@@ -1,0 +1,24 @@
+#!/usr/bin/perl
+
+opendir (DIR, ".") or die "cannot read directory";
+@dircontents = grep !/^\.\.?$/, readdir(DIR);
+closedir(DIR);
+
+foreach (@dircontents) {
+    if(-d $_) {
+    } else {
+	if ($_ =~ /\.sqt/i) {
+	    open (SQTIN, $_) or die "cannot open $_";
+	    @sqtin = <SQTIN>;
+	    close SQTIN;
+	    open (SQTOUT, '>' . $_) or die "cannot write to $_";
+	    foreach (@sqtin) {
+		$_ =~ s/IPI:IPI/IPI/g;
+		print SQTOUT $_;
+	    }
+	    print "\tfixing $_...\n";
+	    close SQTOUT;
+	}
+    }
+}
+

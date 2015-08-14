@@ -1,0 +1,133 @@
+#!/usr/bin/perl
+
+#########################################################################
+#
+#   HLMCombine v0.1 - (c) 2009 Gabe Simon
+#
+#   This script combines Heavy/Light DTASelect data and 
+#   mzXML data into folders suitable for running Chu's
+#   Cimage program
+#
+#   The script looks for
+#     (1) mzXML files
+#     (2) folders containing Heavy DTASelect data (DTASelect-filter.txt)
+#     (3) folders containing Light DTASelect data (DTASelect-filter.txt)
+#   all having the same root filenames.
+#
+#   Two parameters are specified at the command-line, the folder
+#   containing heavy data and the folder containing light-data:
+#      Usage: hlmcombine -h heavy_path -l light_path
+#
+#
+#
+##########################################################################
+
+use Cwd;
+
+if (scalar @ARGV != 4) {
+    print "\nERROR! You must specify folders containing heavy and light data\n";
+    print "\n\tUsage: hlmcombine -h heavy_path -l light_path\n";
+    print "\twhere \'heavy_path\' and \'light_path\' are folder-names.\n";
+    print "\tIt is understood that .mzXML files with root-names identical\n";
+    print "\tto the folders in the heavy and light folders can be found\n";
+    die "\tin the current directory.\n\n";
+
+}
+
+for ($i = 0; $i < scalar @ARGV; ++$i) {
+    if ($ARGV[$i] eq "-h") {
+	$heavydir = $ARGV[$i+1];
+    }
+    if ($ARGV[$i] eq "-l") {
+	$lightdir = $ARGV[$i+1];
+    }
+}
+
+if ((-d $heavydir) && (-d $lightdir)) {
+    $heavydir .= '/' if ($heavydir !~ /\/$/);
+    $lightdir .= '/' if ($lightdir !~ /\/$/);
+    print "\nfound:\n";
+    print "\theavy: $heavydir\n";
+    print "\tlight: $lightdir\n";
+} else {
+    die "\n\nERROR! directories not found, exiting.\n\n";
+}
+
+
+opendir (DIR, ".") or die "cannot read current directory";
+@dircontents = grep !/^\.\.?$/, readdir(DIR);
+closedir(DIR);
+
+foreach (@dircontents) {
+    if (-d $_) {
+    } elsif ($_ =~ /^([^\.]*)\.mzXML$/) {
+#	print "$_\n";
+#	print "$1\n";
+	$rootfilename = $1;
+	push (@mzxmls, $rootfilename);
+	$temphdir = "$heavydir$rootfilename\/";
+	$temphfile = $temphdir .  "DTASelect-filter.txt";
+	$templdir = "$lightdir$rootfilename\/";
+	$templfile = $templdir . "DTASelect-filter.txt";
+#	print "$temphdir\n";
+	if ((-d $temphdir) && (-d $templdir)) {
+#	    print "found dirs for $rootfilename\n";
+	    if ((-e $temphfile) && (-e $templfile)) {
+#		print "\tfound data for $rootfilename\n";
+		push (@found, $rootfilename);
+	    } else {
+		push (@notfound, $rootfilename);
+	    }
+	} else {
+	    push (@notfound, $rootfilename);
+	}
+    }
+}
+
+print "\nFound " . scalar @mzxmls . " mzXML files.\n";
+print "\nDTASelect data was found in the appropriate location for " . scalar @found . " of them.";
+
+if (scalar @notfound > 0) {
+    print "\nHowever, I couldn't find data or folders for: \n";
+    foreach (@notfound) {
+	print "\t$_\n";
+    }
+    die "Exiting...\n";
+} elsif (scalar @mzxmls == scalar @found) {
+    print "\n\nEverything looks good...\n";
+} else {
+    die "\nMismatch.  Exiting.\n";
+}
+
+
+$tmpcmd = "mkdir CimageR_data";
+system ($tmpcmd);
+print "$tmpcmd\n";
+
+$curdir = getcwd;
+
+foreach $rootfilename (@mzxmls) {
+    $tmpcmd = "mkdir CimageR_data\/$rootfilename";
+    print "$tmpcmd\n";
+    system ($tmpcmd);
+    $tmpcmd = "mkdir CimageR_data\/$rootfilename\/dta";
+    print "$tmpcmd\n";
+    system ($tmpcmd);
+    $temphdir = "$heavydir$rootfilename\/";
+    $temphfile = $temphdir .  "DTASelect-filter.txt";
+    $templdir = "$lightdir$rootfilename\/";
+    $templfile = $templdir . "DTASelect-filter.txt";
+    $tmpcmd = "cp $heavydir$rootfilename\/DTASelect-filter.txt CimageR_data/$rootfilename/dta/DTASelect-filter_$rootfilename" . '_heavy.txt';
+    print "$tmpcmd\n";
+    system ($tmpcmd);
+    $tmpcmd = "cp $lightdir$rootfilename\/DTASelect-filter.txt CimageR_data/$rootfilename/dta/DTASelect-filter_$rootfilename" . '_light.txt';
+    print "$tmpcmd\n";
+    system ($tmpcmd);
+#    $tmpcmd = "cp $rootfilename" . '.mzXML' . " CimageR_data/$rootfilename/";
+    $tmpcmd = "ln -s $curdir\/$rootfilename" . '.mzXML' . " CimageR_data/$rootfilename/";
+    print "$tmpcmd\n";
+    system ($tmpcmd);
+}
+
+
+print "\n\nHLMCombine finished successfully.  Organized data is stored in CimageR_data/\n\n";

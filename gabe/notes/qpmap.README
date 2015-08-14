@@ -1,0 +1,36 @@
+step 1:
+     arrange data with mzXML files, a heavy_folder containing heavy data, and a light_folder containing light data
+     run hlmcombine to copy heavy, light, and mzXML data into a new folder called CimageR_data:
+
+     	 hlmcombine -h my_heavy_folder -l my_light_folder
+
+step 2:
+     run a shell-script that executes
+
+     	 cimage silac phospep_1
+
+     in each dta folder 
+
+step 3:
+     run fixbadpeps to replace 0-ratios and bad r2s with ratios based on spectral-counts
+     this will create a fixed_output.to_excel.txt file in each output/ folder that contains
+     'corrected' ratios for un-quantifiable peptides based on spectral-counting
+
+     	 fixbadpeps
+
+step 4:
+     run qpmapper to generate a qpmap file
+
+     	 qpmapper
+
+step 5 (optional, recommended):
+     run qp_combine to generate a file called 'qp_combined_pnglocs.txt' that contains all of the information
+     needed for the PROTOMAP website to display the raw chromatogram files (PNGs) that reside on janus.
+     qp_combine uses the qpamp.params file to get folder-names, etc
+
+     	 qp_combine
+     
+     note: for this to work the permissions for all of these files must be world-readable so:
+
+     	 chmod -R 755 *  
+

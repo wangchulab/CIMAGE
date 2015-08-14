@@ -1,0 +1,320 @@
+2008-12-17: 1.14.1
+Fix the Calculation of Anova values for >2 sample classes
+Fix xcmsBoxPlot() behaviour, now obeying max_eics
+
+2008-10-02: 1.13.10
+findPeaks.centWave: added check & warning for invalid scanrange parameter
+sampnames<-(): fix for empty xcmsSet@phenoData
+sampclass<-(): don't overwrite samplnames fixed
+
+2008-09-22: 1.13.9
+fixed documentation for findPeaks.MSW
+
+2008-09-19: 1.13.8
+findPeaks.MSW is compatible with patched versions of MassSpecWavelet  
+
+2008-09-09: 1.13.7
+xcms allocates a lot less memory when loaded
+workaround for openSUSE 11.0 gcc compiler bug
+
+2008-08-11: 1.13.6
+Added calibrate() to xcmsSet, incl. vignette in xcmsDirect.pdf 
+findPeaks.centWave: save some time: compute dppm only if needed
+
+2008-07-15: 1.13.5
+Parallel peak detection using Rmpi
+Added mpi.finalize() via .Last
+Changed plot.metlin so that x axes is the same on both plots
+initialise variables gcc complained about
+fix error in searchMetlin method.
+xcmsRaw collect changes for simple-er code
+added -DWIN32_LEAN_AND_MEAN to Makevars.win to fix ramp build on windows
+Fix another windows build issue
+Added findPeaksMPI() MPI slave function
+moved Rgraphviz from required to suggested packages
+Preparations for parallel peak picking using MPI, added xcmsPapply() function
+removed duplicate definition of xcmsRaw.getsnScan
+helper method added for xcmsRaw.collect
+added helper method for collect
+export new MS/MS searching methods
+Added collect to xcmsRaw to convert to xcmsFragments, for searching
+NB findPeaks method doesn't alway pick up all peaks that have ms^n data on them.
+Ported phenoData code from 1.13.2
+Added MS/MS searching methods. searchMetlin and similarity search methods for MS/MS data.
+Added dirty nasty methods to find different metabolotes in metlin XML. the collision energy, name, mode (+/-)
+Added MS/MS parser for metlin XML MS/MS data
+Fix call to MassSpecWavelet
+Reapplied Colins Fix + Michaels changes
+enable write.cdf()
+Backported mzClust stuff
+Fix includeMSn handling in xcmsSet + Graphviz fix + use filepath for CDF path
+Restored some (most?) xcmsFragments functionality
+
+2008-06-03: 1.13.4
+Ported the following Changes from 1.13.3:
+- Migrate to ncdf for xcmsRaw.write()
+- Added xcmsRaw CDF export contributed by Peter.Watkins at Food Science Australia (FSA)
+- mzClust for spectra alignment
+- added method="density/mzClust" to group() 
+
+2008-06-03: 1.13.3
+Promote stable 1.12.1 to 1.13.3
+
+2008-05-12: 1.12.1
+centWave/findmzROI: Fix for CE-MS files 
+
+2008-04-30: 1.12.0
+BioConductor Release 2.2 version bump
+
+2008-04-29: 1.11.22
+Revert yesterdays change, and bring back 1.11.20 with a version bump 
+to avoid inconsistencies
+
+2008-04-28:
+Resurrection of 1.11.18 as 1.11.21
+
+2008-04-18: 1.11.20
+Increased "max" parameter of group() from 5 to 50
+Fixed : plotTIC won't work if object@tic slot is empty
+xcmsSet() now gives an error message if no data files were found
+More straightforward API for findPeaks.centWave, much less parameters are needed
+    CAVE: peak width range (in seconds) is used instead of scale range
+    CAVE: ppm instead of dev parameter
+Added ... to diffreport to pass optional parameters to mt.teststat
+Added value = c("into","maxo","intb") parameter to diffreport
+Added warning if non-unique scantimes are detected to xcmsRaw()
+rawEIC() verifies the scanrange  
+findPeaks.centWave generates a warning if data seems to be not in centroid mode
+Added method isCentroided()
+Added prefilter option to findPeaks.centWave
+Fixed bug in centWave/fitGauss
+Added prefilter option to findmzROI
+Speedup for findmzROI
+Renamed findMZBoxes to findmzROI
+Removed findMZBoxes from NAMESPACE
+Fixed plotScan() for "last" spectrum, catch out-of-bounds arguments
+
+2008-04-02: 1.11.19
+Import xcms from BioC 2.1
+
+2008-04-02: 1.10.8
+Fix duplicate setGeneric() which fails on R-2.7a
+Fix BinLinBase which had an uninitialised argument in .Call()
+Provide clean base for pulling 1.10.8 into 1.11.19
+
+2008-01-24: 1.10.7
+Fix in plot(eic) for xcmsEIC with absent groups
+
+2007-11-13: 1.10.6
+Removed unnecessary use of data.frame in findPeaks.centWave(), this fixes
+a long delay when large peaklists are generated
+
+2007-11-12: 1.10.5
+Increased buffer size in findMZBoxes() to catch a rare bug
+
+2007-11-07: 1.10.4
+Standardised peak area calculation by introducing scan-distance multiplier to findPeaks.centWave()
+
+2007-11-07: 1.10.3
+Fixed a serious fillPeaks() bug introduced in version 1.9.5, which caused it to
+silently fill in zero intensities for almost every missing peak
+
+2007-11-01: 1.10.2
+Fixed bug in findPeaks.centWave() buffer initialisation (mzboxes.c)
+Added check in findPeaks.matchedFilter() for not picking filter artefacts 
+
+2007-10-09: 1.10.1
+Added error when xcmsRaw objects are read that have non-monotonic stantimes
+Added warning when retcor() is probably overcorrecting
+Fixed a bounds checking bug in specPeaks()
+
+2007-10-08: 1.10.0
+Bioconductor release 2.1
+
+2007-09-17: 1.9.6
+rawEIC uses binary search
+findMZBoxes gives proper error messages
+findPeaks.centWave
+  - new baseline and S/N estimation (default snthresh=20)
+Bugfix for MSW.getRidge
+
+2007-09-04: 1.9.5
+Fixed bug were fillPeaks() would fail if there was <= 1 peak to fill in
+Made getPeaks() slightly more memory efficient by correcting an oversight
+flush.console() is now called on all systems during long operations
+
+2007-07-16: 1.9.4
+Increased buffer size to 100000 in findMZBoxes() to handle also files with a vast number of peaks
+Fixed bug in MSW.getRidge() to catch empty ridgeLists
+findPeaks.centWave
+  - The scale on which the peak was localised is also returned
+  - additional logical argument fitgauss, gaussian fits are no longer mandatory 
+  - Integration method can be choosen: descent on the mexican hat filtered data or on the real data. Method 2 is honest, 
+    while method 1 (default) is more robust to noise.
+  - runs much faster 
+
+2007-06-29: 1.9.3
+Added wrapper for MassSpecWavelet peak picking on single spectra (findPeaks.MSW)
+Added some more logic to joinOverlappingFeatures()
+
+2007-05-??: 1.9.2
+Fixed mzdata problem under windows (ramp.c v1.39 from CVS)
+Removed workaround for ramp/gcc bug
+
+2007-05-??: 1.9.1
+
+Workaround for ramp/gcc bug (optimization lowered to -O1 for ramp.c)
+Several improvements for findpeaks.centWave 
+Removed maxGaussErr option in findpeaks.centWave 
+Fixed bug in joinOverlappingFeatures()
+Fixed bug in findpeaks.centWave where rt was not assigned correctly
+Updated ramp.c to v1.38 (from CVS)
+
+2007-04-26: 1.8.0 & 1.9.0
+
+introduced namespace
+plot(xcmsEIC) problem seems to be fixed
+
+Added : 
+  - rawEIC method
+  - findMZBoxes method
+  - findPeaks.centWave method
+Modified findPeaks() method to support different findPeaks.* algorithms
+
+RAMP: updated ramp.c (v1.37), ramp.h  (from CVS)
+  - ...
+  - handle mzData "TimeInSeconds" values
+  - dealing with mzXML files with missing scans
+  - support for zlib compression
+  
+Check if file exists in xcmsRaw()
+Plot (log) colored data points in plotRaw()  
+
+Modified findPeaks method:
+  - Moved column "i" (peak number within combined EIC) to the second-to-last column
+  - Added column "sn" with signal to noise ratio
+xcmsSets now include "i" and "sn" columns in the peaks matrix
+
+Updated Windows NetCDF library to version 3.6.2 (now statically linked into xcms.dll)
+
+Small fixes to xcmsSet generation relating to finding/categorizing files:
+  - If the files argument is not set, then "./" is no longer appended
+  - One character directory names, and thus group names, are now supported
+
+Enabled axis labels for OpenGL surface plotting using plotSurf()
+
+Removed formerly depricated function clustunique()
+
+Changed xcmsEIC plotting function from an S4 to an S3 method
+
+2006-04-27: 1.6.1 & 1.7.0
+
+Bioconductor release 1.9 and development branch 2.0
+Fixed documentation and DESCRIPTION file for R 2.4.0 package check
+
+2006-08-24: 1.5.2
+
+Fixed bug where xcmsSet() failed if less than 2 peaks were detected in a file
+Added warning to xcmsSet() if less than 10 peaks were detected in a file
+
+2006-05-09: 1.5.1
+
+Fixed bug where NetCDF files would have their scans incorrectly reversed
+Merged recent changes to RAMP mzXML/mzData parser to support TimeInMinutes
+
+2006-04-27: 1.4.0 & 1.5.0
+
+Bioconductor release 1.8 and development branch 1.9
+No changes to code or functionality from 1.3.2
+
+2006-02-25: 1.3.2
+
+Blank spectra in mzXML and mzData files are now ignored
+EIC width can now be specified in diffreport()
+Better error reporting in getEIC()
+Fixed rare problem in getEIC()
+
+2005-12-07: 1.3.1
+
+Added support for reading mzData files
+Only full-scan spectra are read from mzXML files
+The group() function now returns only unique, non-overalpping peak groups
+Replaced clustunique utility function with C implementation: rectUnique
+
+2005-10-14: 1.2.0 & 1.3.0
+
+Bioconductor release 1.7 and development branch 1.8
+No changes to code or functionality from 1.1.6
+
+2005-08-26: 1.1.6
+
+Fixed bug in plotPeaks()
+Updated for compatibility with R 2.2.0
+
+2005-08-23: 1.1.5
+
+Improved peak identification to return full precision masses
+regardless of EIC step size
+
+2005-08-16: 1.1.4
+
+Added mzXML raw data import
+Added linear alignment method to retcor()
+Added check for too small span in retcor()
+Created CHANGELOG
+
+2005-08-11: 1.1.3
+
+Added xcmsEIC class
+Added groupNames method to xcmsSet
+Fixed bug in EIBPC buffer range calculations
+Changed sn argument name to snthresh in findPeaks() 
+
+2005-07-21: 1.1.2
+
+Fixed bug in retention time correction leading to NA times
+
+2005-06-22: 1.1.1
+
+Improved xcmsSet() constructor handling of absolute path names 
+
+2005-05-20: 1.1.0
+
+Bumped version for Bioconductor 1.7 development cycle
+
+2005-05-11: 1.0.0
+
+Bioconductor 1.6 release
+Created workaround for xcmsRaw() slowdown introduced in R 2.1.0
+Refined xcmsInstall vignette and plotSurf() function
+
+2005-05-09: 0.5.6
+
+Added xcmsInstall vignette
+
+2005-05-05: 0.5.5
+
+Added check for group data to retcor(), fillPeaks(), & diffreport()
+
+2005-05-04: 0.5.4
+
+Improved plotSurf() function with fixed aspect ratio scaling
+Added function documentation
+
+2005-04-28: 0.5.3
+
+Fixed bugs in utility functions
+Added function documentation
+
+2005-04-15: 0.5.2
+
+Added options for pruning groups during cross-sample peak matching
+Improved dynamic library loading/unloading
+
+2005-04-12: 0.5.1
+
+Fixed warnings during Windows compilation
+
+2005-03-31: 0.5
+
+Checked xcms into Bioconductor SVN repository

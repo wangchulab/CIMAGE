@@ -1,0 +1,100 @@
+#+1246727930
+ls
+#+1246727937
+ls -l
+#+1246727941
+R
+#+1246728042
+ls
+#+1246728047
+fg
+#+1246730187
+which DTASelect
+#+1246730191
+cd /usr/local/bin
+#+1246730192
+ls
+#+1246730194
+cat DTASelect
+#+1246730258
+java -?
+#+1246730261
+java -h
+#+1246730301
+java -h | grep oss
+#+1246730320
+java -X
+#+1246730366
+cat DTASelect
+#+1246730411
+id
+#+1246900525
+su
+#+1246919935
+help
+#+1246919955
+set
+#+1246919959
+set | less
+#+1246920031
+function today {
+#+1246920035
+function
+#+1246920037
+man function
+#+1246921055
+R
+#+1246921502
+ls
+#+1246921503
+cd public_html/
+#+1246921504
+ls
+#+1246921505
+cd mzxml/
+#+1246921505
+ls
+#+1246921515
+R
+#+1246921564
+cd ~chuwang/svnrepos/
+#+1246921566
+cd R/
+#+1246921566
+ls
+#+1246921578
+emacs findMs1AcrossSets.R
+#+1246928482
+ssh gabriels@www
+#+1246928521
+cd ~gabriels/
+#+1246928523
+cd public_html/
+#+1246928523
+ls
+#+1246928561
+emacs makeIPIxENS.pl
+#+1246928699
+gunzip ipi.CHICK.fasta.gz
+#+1246928702
+ls
+#+1246928705
+cat ipi.CHICK.fasta
+#+1246928727
+grep ENS ipi.CHICK.fasta
+#+1246928737
+grep ENSGALG ipi.CHICK.fasta
+#+1246928746
+wget ftp://ftp.ebi.ac.uk/pub/databases/IPI/current/ipi.CHICK.dat.gz
+#+1246931574
+ssh gabriels@www
+#+1246985360
+ls
+#+1246985365
+cat ipi.CHICK.fasta
+#+1246985491
+emacs homochicken.fasta
+#+1246985598
+grep Tax_Id homochicken.fasta
+#+1246985609
+fg

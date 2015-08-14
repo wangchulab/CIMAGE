@@ -1,0 +1,116 @@
+<HTML>
+<HEAD></HEAD><BODY>
+<font face="Arial">
+<h3>Run CIMAGE to analyze data</h3>
+1. make a folder such as "my_experiment"<BR><BR>
+
+2. make a folder "dta" in the "my_experiment" folder<BR><BR>
+
+3. copy the converted "<B>TAG</B>_0?.mzXML" files to the "my_experiment" folder<BR><BR>
+
+4. copy the searched DTASelect-filter.txt files into the "dta" folder
+and make sure that they have names like "DTASelect-filter_<B>TAG</B>_light/.txt" or "DTASelect-filter_<B>TAG</B>_heavy.txt",
+in which <B>"TAG"</B> is the one you use to name those mzXML files.<BR><BR>
+
+5. go into the "dta" folder and run the "cimage" program by typing:<BR><BR>
+<I>cimage &nbsp&nbsp&nbsp your-cimage-params-file &nbsp&nbsp&nbsp<B>TAG</B></I>. <BR><BR>
+Template cimage.params file and silac light/heavy chemical composition files can be downloaded here:
+<A HREF="cimage.params">cimage.params</A>&nbsp<A HREF="light.default.table.txt">light.table</A>&nbsp<A HREF="heavy.default.table.txt">heavy.table</A>&nbsp
+Light/heavy tables are strictly tab-delimited text files, so it is better to use EXCEL to import, edit and
+then export it. Again, substitute TAG with your chosen name.<BR><BR>
+
+6. If it runs fine, it will generate a "output" folder in which there
+will be a pdf file of chromatograph, a "to_excel" text file for your
+editing in execel and a folder of "PNG" containing all individual
+graphic files.<BR><BR>
+
+7. move to "my_experiment" folder and generate a html version of the
+result by typing:<BR><BR>
+<I> cimage_combine &nbsp&nbsp&nbsp [by_protein] &nbsp&nbsp&nbsp output_rt_10_sn_2.5.to_excel.txt
+  &nbsp&nbsp&nbsp dta </I> <BR><BR>
+and this will generate a <B>combine_dta.html</B> and a raw text file <B>combine_dta.txt</B>. Skip the
+<B>by_protein</B> option if you would like to by default group identified
+peptides by their sequence instead of their parent proteins. There are
+more flexible ways to combine multiple results folders into one master
+list, and discuss with me if you would like to try additional options.<BR><BR>
+
+8. To compare ratios obtained by multiple different cimage runs, you can run <B>cimage_compare</B> program by typing: <BR><BR>
+
+<I> cimage_compare  &nbsp&nbsp&nbsp [by_protein]  &nbsp&nbsp&nbsp file1  &nbsp&nbsp&nbsp column1
+  &nbsp&nbsp&nbsp outname1  &nbsp&nbsp&nbsp file2  &nbsp&nbsp&nbsp column2  &nbsp&nbsp&nbsp  outname2
+  ... </I><BR><BR>
+
+in which "file1" and "file2" are full names (with paths) of the two combined_dta.txt files to be compared,
+"column1" and "column2" are names of ratio columns in each combined_dta.txt file, and "outname1" and
+"outname2" are names of ratios columns when they are output into a tab-delimited text file side by side that
+you can import to EXCEL for further analysis. <BR><BR>
+
+for example, if you like to compare protein silac ratios (column "mr.set_1" in combined_dta.txt files)
+obtained from two experiments "exp1" and "exp2", the command to run would be:<BR><BR>
+
+<I> cimage_compare  &nbsp&nbsp&nbsp by_protein  &nbsp&nbsp&nbsp
+  /your-folder/exp1/combined_dta.txt &nbsp&nbsp&nbsp set_1 &nbsp&nbsp&nbsp my_exp1
+  &nbsp&nbsp&nbsp /your-folder/exp2/combined_dta.txt  &nbsp&nbsp&nbsp set_1  &nbsp&nbsp&nbsp my_exp2 </I><BR><BR>
+
+<h3>Upload CIMAGE data to Lab Database</h3>
+1. Transfer your cimage data to the database server. On avatar type:<BR><BR>
+<I> cimage_zip &nbsp&nbsp&nbsp /your-folder</I><BR><BR>
+"your-folder" is where the combined_dta.html file is generate and when prompted, type in the password to
+complete the transfer <BR><BR>
+2. <A HREF="http://bfclabcomp3.scripps.edu/cimage/upload.php">Add</A> your transfered data permanently into lab database.
+<!--Note: for detailed information on operating DTASelect, <A HREF="/chemphys/cravatt/protomap/dtaselect_instructions.html">go here</A>.<p>
+<h3>Useful programs</h3>
+Note:  all of these programs are written in <A HREF="http://en.wikipedia.org/wiki/Perl" target="_blank">perl</a> so to run them on a PC you must first download and install <A HREF="activeperl-5-8-8.msi" target="_blank">ActivePerl<A>.  To install ActivePerl, download <A HREF="activeperl-5-8-8.msi" target="_blank">this file<A> to your desktop and double-click to install.
+
+<h4><a href="dttools.zip">dtarray and dtcoverage</a> (click to download)</h4>
+<p>These two programs will allow you to generate a matrix of spectral counts (using <u><code>dtarray.pl</code></u>) as
+ well as a file containing sequence coverage information (using <u><code>dtcoverage.pl</code></u>) given a set of DTASelect results.  To run them in Windows, follow the
+instructions below.  To run them in linux (on garibaldi, krusty, or janus) ask Gabe or Chu for help.</p>
+
+<p>To run these scripts, you must be in a folder containing multiple folders that each contain DTASelect results.  If
+you are running a version of DTASelect above 2.0.25 (e.g. on garibaldi or krusty), <b> you must run 'DTASelect2h'
+rather than 'DTASelect2'</b>.  If you are running DTASelect in Windows this will not be a problem since this will be
+version 2.0.25.  You may find it helpful to use <u><code>dtall.pl</code></u> (included in <a href="dttools.zip">dttools.zip</a>) to run DTASelect on multiple folders simultaneously.</p>
+
+<p>Once you have all of your DTASelect results in place, <A HREF="dttools.zip">download dttools.zip</a> and extract the
+contents to the appropriate folder.  You can run these scripts by double-clicking on the icons, but it is recommended
+that you run them from the command-prompt so that you can see the progress and read any error-messages that are
+generated.</p>
+<ul>
+<li>
+<p>First, run <u><code>dtarray.pl</code></u>.  This will do two things:  1) it will generate a file called <u><code>dtarray.params</code></u> which contains the names of each folder and the path to each folder.  If you subsequently want to change the order of the datasets in your array or their names, edit this file.  If a <u><code>dtarray.params</code>
+</u> file already exists, <u><code>dtarray.pl</code></u> will use it so if you've added new folders make sure to
+ update this file or just delete it to generate a new one.  2) it will generate a file called <u><code>dtarray.txt
+</code></u> that contains all of the spectral counts from all of the proteins in all of your DTASelect runs.</p>
+
+<p>If you plan to store the dataset permanently on the website, please <b>rename</b> the file with a descriptive
+file-name (but preserve the <u><code>.txt</code></u> extension).  So, for example, you might rename your <u>
+<code>dtarray.txt</code></u> to <u><code>pea-brains.txt</code></u> prior to uploading to the website.</p>
+</li>
+<li>Next, to generate a <b>sequence-coverage</b> file for the website, run <u><code>dtcoverage.pl</code></u>.  Again,
+you can double-click to run it, but it is recommended that you run it from the command line so you can see any output
+it might generate.  <u><code>dtcoverage.pl</code></u> needs to use the appropriate FASTA database in order to see your
+protein sequences.  It will attempt to locate the FASTA file based on the location specified in your <code>
+DTASelect.html</code> files, but if it can't find it in that location you can place the FASTA file in the current
+directory, or specify an alternative path at the command line (e.g. <u><code>dtcoverage.pl mydb.fasta</code></u>).
+If <u><code>dtcoverage.pl</code></u> completes successfully, it will generate a file called <u><code>dtcoverage.<b>dat</code></b></u> that contains your sequence-coverage information.  You must <b>rename</b> this file so that the
+base filename matches your <u><code>dtarray</code></u> filename, but make sure to preserve the <b><code>.dat</b>
+</code> extension.  So, per the previous example, rename the <u><code>dtcoverage.dat</code></u> file to <u><code>pea-brains.<b>dat</b></code></u>.</p></li>
+
+<li>Now that you have two files (<u><code>pea-brains.txt</code></u> and <u><code>pea-brains.dat</code></u>) you can
+<a href="upload.php">upload</a> them to the MudPIT database for convenient searching and sharing of the data.  To see
+an example of how the process should look, check out the image below:</li>
+
+</ul>
+</p>
+<img src="dttools_eg.jpg"><p>
+
+<P><BR>
+<h3>FASTA Databases</h3>
+Right-click to save these FASTA databases to your hard-drive, then upload them to your bluefish/garibaldi account.
+<UL>
+<LI><A HREF="IPIxENS.HUMAN_plus_Reverse2.fasta">IPIxENS.HUMAN_plus_Reverse2.fasta</A> - Human gene-centric (non-redundant) variant of the IPI database with reverse-concatenation.</li>
+<LI><A HREF="IPIxENS.MOUSE_plus_Reverse2.fasta">IPIxENS.MOUSE_plus_Reverse2.fasta</A> - Mouse gene-centric --
+  --(non-redundant) variant of the IPI database with reverse-concatenation</li>
+-->
+</BODY></HTML>

@@ -1,0 +1,315 @@
+#!/usr/bin/perl
+
+
+use GD;
+#use Statistics::Distributions;
+use GD::Graph;
+use GD::Graph::points;
+use GD::Graph::axestype;
+use GD::Graph::xypoints;
+
+die "Usage: dmp_volcano xcms_output.tsv...\n" if ($ARGV[0] eq "");
+
+open (TSVIN, $ARGV[0]) or die "ERROR: cannot open $ARGV[0]!";
+@tsv = <TSVIN>;
+close TSVIN;
+
+@filename = split(/\./,$ARGV[0]);
+
+$rootfilename = $filename[0];
+
+print "$rootfilename\n";
+
+@header = split(/\t/,$tsv[0]);
+for ($i = 0; $i < scalar @header; ++$i) {
+    $npeakscell = $i if ($header[$i] eq "npeaks");
+}
+$n = (scalar @header - $npeakscell - 3) / 2;
+
+print "n= $n\n";
+$ctrlname = $header[$npeakscell+2];
+$exptname = $header[$npeakscell+1];
+
+$maxfc = 0;
+for ($i = 1; $i < scalar @tsv; ++$i) {
+    @currow = split(/\t/,$tsv[$i]);
+    $maxfc = $currow[2] if (($currow[2] > $maxfc) && ($currow[2] ne "Inf"));
+}
+
+print "from: " . ($npeakscell+3) . " - " . ($npeakscell+3+$n) . "\n";
+
+for ($i = 1; $i < scalar @tsv; ++$i) {   #parse TSV file
+    @currow = split(/\t/,$tsv[$i]);
+    $cursign = 1 if ($currow[3] > 0);
+    $cursign = -2 if ($currow[3] < 0);
+
+    ($ctrlsum, $expsum) = (0,0);
+    ($ctrlav, $expav) = (0,0);
+    for ($j = $npeakscell+3; $j < $npeakscell+3+$n;++$j) {
+	$expsum += $currow[$j];
+	$ctrlsum += $currow[$j+$n];
+    }
+    ($ctrlav, $expav) = ($ctrlsum / $n, $expsum/$n);
+
+    if ($currow[2] eq "Inf") {
+	$pid{$currow[0]} = [( $cursign * $maxfc, $currow[4], $currow[5],$currow[8], $ctrlav, $expav)];      #fc, pval, mzmed, rt, ctrlmaxav, exptmaxav
+    } else {
+	$pid{$currow[0]} = [( $cursign * $currow[2], $currow[4], $currow[5],$currow[8], $ctrlav, $expav)];      #fc, pval, mzmed, rt
+    }
+}
+
+print "maxfc: $maxfc\n";
+
+foreach (keys %pid) {
+    if ( $pid{$_}[0] > 0) {
+	push (@fcdata, &log2( $pid{$_}[0] ) );  #fc
+    } else {
+       	push (@fcdata,  -1 * &log2( abs($pid{$_}[0] )) +1);  #fc
+    }
+    push (@pdata, -1 * &log10( $pid{$_}[1] ) ); #pval
+    push (@intensdata, &max($pid{$_}[4], $pid{$_}[5]));
+    push (@names, "m/z " . &nicenumber($pid{$_}[2]) . ", rt: " . &nicenumber($pid{$_}[3]/60) . " mins");
+    push (@ids, $_);
+}
+
+
+
+@data = (\@fcdata, \@pdata);
+
+
+my $vplot = GD::Graph::xypoints->new(640,480);
+
+
+$fclim = &int((1 + &max( abs(&max(@fcdata)), abs(&min(@fcdata)) )));
+
+print "max fcdata: " . &max(@fcdata) . "\n";
+print "fclim: $fclim\n";
+
+foreach (@fcdata) {
+#    print "\t$_\n";
+}
+
+
+
+$vplot->set(
+    t_margin          => 10,
+    b_margin          => 10,
+    r_margin          => 60,
+    l_margin          => 10,
+    x_label => "log2 fold change",
+    y_label => '-log10 p-value',
+    title => "p-value versus fold-change",
+
+    fgclr => 'lgray',
+
+#              y_max_value=>
+#              y_min_value=>0,
+
+    x_max_value => $fclim,,
+    x_min_value => -1*$fclim,
+
+#    x_max_value=>3,
+#    x_min_value=>-3,
+
+    y_number_format => \&y_number_format,  #this function reverses the values on the x-axis
+    x_number_format => \&x_number_format,      #this function formats the values on the y-axis (takes numbe$
+
+    x_tick_number => 9,
+#              x_label_skip =>1,
+#              y_tick_number => $nb+1,
+    x_ticks => 1,
+    x_long_ticks => 0,
+    y_long_ticks => 1,
+    x_labels_vertical => 0,
+    marker_size => 1,
+    transparent => 0,
+    dclrs => [qw(blue)],
+) or warn $vplot->error;
+
+$gd = $vplot->plot(\@data) or die $vplot->error;
+
+$red = $gd->colorAllocate(255,0,0);
+$lightred = $gd->colorAllocate(255,200,200);
+$blue = $gd->colorAllocate(0,0,255);
+$black = $gd->colorAllocate(0,0,0);
+$grey = $gd->colorAllocate(120,120,120);
+
+
+
+@xp = ();
+@yp = ();
+
+$maxintens = &max(@intensdata);
+$minintens = &min(@intensdata);
+
+
+$clr[0] = $gd->colorAllocate(0,0,255);
+$clr[1] = $gd->colorAllocate(15,47,143);
+$clr[2] = $gd->colorAllocate(63,63,63);
+$clr[3] = $gd->colorAllocate(143,47,15);
+$clr[4] = $gd->colorAllocate(255,0,0);
+
+
+( $left, $yp5 ) = $vplot->val_to_pixel( -1*$fclim, 1.30103,1);
+( $right, $yp5 ) = $vplot->val_to_pixel( $fclim, 1.30103,1);
+
+$gd->dashedLine($left,$yp5,$right,$yp5,$red);
+
+for ($i = 0; $i < scalar @names; ++$i) {
+    ($xp[$i], $yp[$i]) = $vplot->val_to_pixel( $fcdata[$i], $pdata[$i], 1);
+
+    $csize = 5;
+    $curintens = $intensdata[$i];
+
+
+    if (abs($fcdata[$i]) > 1) {
+#	$curcolor = &pngcolor(&log2($curintens) / &log2($maxintens));
+	$curcolor = &pngcolor($curintens / $maxintens);
+    } else {
+	$curcolor = $grey;
+    }
+    $gd->filledArc($xp[$i],$yp[$i],$csize,$csize,0,360,$curcolor);
+
+
+
+}
+
+
+
+
+open (PNGOUT, '>volcanoplot.png') or die "cannot write to volcanoplot.png";
+binmode PNGOUT;
+#print PNGOUT "Content-type: image/png\n\n";
+print PNGOUT $gd->png;
+close PNGOUT;
+
+open (HTM, ">$rootfilename" . '_volcano.html') or die "cannot write to volcano_plot.html";
+print HTM "<HTML><HEAD></HEAD>\n";
+print HTM "<FRAMESET COLS=\"650,*\" BORDER=1>\n";
+print HTM "<FRAME NAME=\"leftframe\" SRC=\"leftframe.html\">\n";
+print HTM "<FRAME NAME=\"rightframe\" SRC=\"rightframe.html\">\n";
+print HTM "</FRAMESET></HTML>\n";
+close HTM;
+
+open (HTM, '>leftframe.html') or die "cannot write to volcano_plot.html";
+
+print HTM "<HTML><BODY>\n";
+print HTM "<MAP NAME=\"map1\">\n";
+print HTM "<IMG SRC=\"volcanoplot.png\" USEMAP=\"#map1\" BORDER=\"0\">\n";
+
+
+@xp = ();
+@yp = ();
+
+for ($i = 0; $i < scalar @names; ++$i) {
+    ($xp[$i], $yp[$i]) = $vplot->val_to_pixel( $fcdata[$i], $pdata[$i], 1);
+    $pngloc = $rootfilename . "_eic/";   
+    $ids[$i]= "00$ids[$i]" if (length($ids[$i]) == 1);
+    $ids[$i] = "0$ids[$i]" if (length($ids[$i]) == 2);
+    $pngloc .= $ids[$i] . ".png";
+    print HTM "<AREA HREF=\"$pngloc\" TITLE=\"$names[$i]\" SHAPE=\"CIRCLE\" COORDS=\"$xp[$i],$yp[$i],2\" TARGET=\"rightframe\"></AREA>\n";
+}
+
+print HTM "</MAP>\n";
+
+@hxp = ();
+@hyp = ();
+
+
+
+
+sub log2 {
+    my $n = shift;
+    if ($n > 0) {
+        return log($n)/log(2);
+    } else {
+        return 0;
+    }
+
+}
+
+
+sub log10 {
+    my $n = shift;
+    if ($n > 0) {
+        return log($n)/log(10);
+    } else {
+        return 0;
+    }
+
+}
+sub int {
+    $number = shift;
+    if ($number =~ /(\d+)\.\d+/) {
+        return $1;
+    } else {
+        return $number;
+    }
+}
+
+sub y_number_format {
+    $number = shift;
+#    $number = 10 ** (-1*$number);
+    if ($number =~ /(\d+)\.(\d+)/) {
+        return "$1\." . substr($2,0,2);
+    } else {
+        return $number;
+    }
+
+}
+
+sub x_number_format {
+    $number = shift;
+#    $number = 10 ** (-1*$number);
+    if ($number =~ /(\d+)\.(\d+)/) {
+        return "$1\." . substr($2,0,1);
+    } else {
+        return $number;
+    }
+
+}
+sub max {
+    $tempmax = 0;
+    foreach (@_) {
+        $tempmax = $_ if ($_ > $tempmax);
+    }
+    return $tempmax;
+}
+
+
+sub min {
+    $tempmin = 10000;
+    foreach (@_) {
+        $tempmin = $_ if ($_ < $tempmin);
+    }
+    return $tempmin;
+}
+
+
+sub pngcolor {
+    $v = shift;
+#    return $clr[0] if ($v < 0.2);
+#    return $clr[1] if (($v >= 0.2) && ($v < 0.4));
+#    return $clr[2] if (($v >= 0.4) && ($v < 0.6));
+#    return $clr[3] if (($v >= 0.6) && ($v < 0.8));
+#    return $clr[4] if ($v >= 0.8);
+
+    $bin = 0.005;
+
+    return $clr[0] if ($v < $bin);
+    return $clr[1] if (($v >= $bin) && ($v < 2*$bin));
+    return $clr[1] if (($v >= 2*$bin) && ($v < 3*$bin));
+    return $clr[1] if (($v >= 3*$bin) && ($v < 4*$bin));
+    return $clr[4] if ($v >= 4* $bin);
+
+
+}
+
+sub nicenumber {
+    $v = shift;
+    if ($v =~ /(\d+)\.(\d\d)/) {
+	return "$1.$2";
+    } else {
+	return $v;
+    }
+}

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+if [ $# -lt 2 ]; then
+    echo Usage: $0 params
+    exit
+fi
+
+folders=$(\ls *.sqt | sed -e "s/\.sqt$//g" | sed -e "s/\_0.$//g" | sort | uniq )
+for f in $folders
+  do
+  mkdir -p DTASelect_$f
+  cd DTASelect_$f
+  ln -s ../$f\_*.sqt ./
+  ln -s ../sequest.params ./
+  echo run DTASelect $@ for $(\ls $f\_*.sqt)
+  DTASelect $@ >> DTASelect.log
+  cd ..
+done

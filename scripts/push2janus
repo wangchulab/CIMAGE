@@ -1,0 +1,33 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]; then
+    echo Usage:$0 folder_to_copy
+    exit
+fi
+
+folder=$(echo $1 | sed 's/\///g')
+
+if [ ! -s $folder ]; then
+    echo $folder does not exist!
+    exit
+fi
+
+dir=`pwd`
+new_dir=$(echo $dir | sed 's/lustre\/people/home/g')
+echo creating folders on janus ...
+ssh 137.131.5.161 mkdir -p $new_dir
+
+for p in $(find ./$folder -name "sequest.params")
+  do
+  cat $p | sed 's/lustre\/people/home/g' > $p.tmp
+  mv $p $p.garibaldi
+  mv $p.tmp $p
+done
+
+echo copying files to janus ...
+rsync -avzr -e ssh $folder 137.131.5.161:$new_dir/
+
+for p in $(find ./$folder -name "sequest.params")
+  do
+  mv $p.garibaldi $p
+done

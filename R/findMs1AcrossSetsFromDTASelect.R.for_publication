@@ -1,0 +1,406 @@
+library(xcms)
+source("/home/chuwang/svnrepos/R/msisotope.R")
+
+## ratio cutoff range, anything outside this range will be ignored.
+ratio.range <- c(0.6,15)
+## probe's mass added to peptide
+probe.mass <- c(464.28596)
+names(probe.mass) <- c("C")
+## 10 ppm to extract chromatographic peaks
+mz.ppm.cut <- 0.000010
+# From Eranthie's isotopically labeled probe
+pair.mass.delta <- 6.01381
+# nature mass difference between C12 and C13
+isotope.mass.unit <- 1.0033548
+mass.shift <- round( pair.mass.delta/isotope.mass.unit )
+# mass of a proton
+Hplus.mass <- 1.0072765
+
+## file name from input args
+args <- commandArgs(trailingOnly=T)
+output.path <- "output"
+dir.create(output.path)
+## the table with protein names
+ipi.name.table <- read.table("ipi_name.table",sep="\t",header=T,stringsAsFactors=F)
+if ("IPI00177423.3" %in% rownames(ipi.name.table) ) {
+  ipi.name.table["IPI00177423.3","name"] <- "RTN3 Reticulon-3 (Neuroendocrine-specific protein-like)"
+}
+## the table with mass and scan number from DTASelect
+cross.table <- read.table("cross_scan.table", header=T, check.names=F)
+#cross.table[,"mass"] <- cross.table[,"mass"] + probe.mass
+split.table <- matrix(unlist(strsplit(as.character(cross.table[,"key"]),":")), byrow=T,ncol=4)
+dimnames(split.table)[[2]] <- c("ipi","peptide","charge","segment")
+cross.table <- cbind(cross.table, split.table)
+uniq.ipi.peptides <- as.factor(paste(cross.table[,"ipi"], cross.table[,"peptide"],sep=":"))
+entry.levels <- levels( uniq.ipi.peptides )
+## all_scan.table
+all.scan.table <- read.table("all_scan.table", header=T)
+## file name tags
+cross.vec <- as.character(args)
+ncross <- length(cross.vec)
+## cellline name
+cell <- unlist( strsplit(as.character(cross.vec[1]),"_") )[1]
+if (cell == "mcf" ) {
+  cell <- "MCF7"
+}
+if (cell== "231") {
+  cell <- "MDA-MB-231"
+}
+if (cell== "jurkat") {
+  cell <- "Jurkat T-cell"
+}
+conc.vec <- c("10uM", "100uM")
+## find all matched input files in current directory
+##if(FALSE) {
+input.path <- getwd()
+mzXML.names <- list.files(path="../",pattern="mzXML$")
+mzXML.files <- as.list( mzXML.names )
+names(mzXML.files) <- mzXML.names
+for (name in mzXML.names) {
+  cat(paste(name,"\n",sep=""))
+  mzXML.files[[name]] <- xcmsRaw( paste("../",name,sep=""), profstep=0, includeMSn=T)
+}
+##}
+##special case for raw file corruption
+##ex2 <- mzXML.files[[2]]
+##new.ex2 <- readFileFromMsn( ex2 )
+##mzXML.files[[2]] <- new.ex2
+##
+
+## retention time window in secs
+rt.window <- 10
+rt.window.width <- rt.window * 60
+local.rt.window <- 2
+local.rt.window.width <- local.rt.window * 60
+## signal/noise ratio for peak picking
+sn <- 2.5
+
+## column names for calculated ratios
+integrated.area.ratio <- paste("IR",cross.vec,sep=".")
+linear.regression.ratio <- paste("NP",cross.vec,sep=".")
+linear.regression.R2 <- paste("R2",cross.vec,sep=".")
+light.integrated.area <- paste("INT",cross.vec,sep=".")
+column.names <- c("index","ipi", "description", "symbol", "sequence", "mass", "charge", "segment",
+                  integrated.area.ratio, light.integrated.area, linear.regression.ratio, linear.regression.R2, "entry", "link" )
+out.df <- matrix(nrow=0, ncol=length(column.names))
+colnames(out.df) <- column.names
+
+## output layout
+out.filename.base <- paste("output_rt_",as.character(rt.window),"_sn_",
+                      as.character(sn),sep="")
+out.filename <- paste(output.path,"/",out.filename.base,".ps",sep="")
+out.filename.r2 <- paste(output.path,"/",out.filename.base,".ps",sep="")
+horiz.layout <- F
+if (ncross < 3) {
+  horiz.layout <- T
+}
+postscript( out.filename, horizontal=horiz.layout)
+layout.vec <- row.layout.vec <- c(1,1,2,1,1,3)
+if ( ncross > 1 ) {
+  for (i in 1:(ncross-1)) {
+    layout.vec <- c(layout.vec,(row.layout.vec+i*3))
+  }
+}
+layout.matrix <- matrix(layout.vec,byrow=T,ncol=3)
+layout(layout.matrix)
+par(oma=c(0,0,5,0), las=0)
+
+##for ( i in 372:372) {
+for ( i in 1:dim(cross.table)[1] ) {
+  key <- cross.table[i,"key"]
+  tmp.vec <- unlist( strsplit(as.character(key),":") )
+  ipi <- tmp.vec[1]
+  peptide <- tmp.vec[2]
+  charge <- as.integer(tmp.vec[3])
+  segment <- tmp.vec[4]
+  entry.tag <- paste( ipi, peptide, sep=":")
+  entry.index <- which( entry.tag == entry.levels )
+  description <- as.character(ipi.name.table[ipi,"name"])
+  symbol<- strsplit(description, " ")[[1]][1]
+  peptide.vec <- unlist( strsplit(peptide,"",fixed=T) )
+  nmod <- length(which(peptide.vec=="*"))
+  modified.mass <- sum( probe.mass[peptide.vec[which(peptide.vec=="*")-1]] )
+  mono.mass  <- cross.table[i,"mass"]+modified.mass
+  predicted.dist <- isotope.dist( averagine.count(mono.mass) )
+  mass <- mono.mass + (which.max(predicted.dist) - 1)*isotope.mass.unit
+  raw.scan.num <- cross.table[i,cross.vec]
+
+  ## mz
+  mono.mz <- mono.mass/charge + Hplus.mass
+  mz.light <- mass/charge + Hplus.mass
+  mz.heavy <- (mass+nmod*pair.mass.delta)/charge + Hplus.mass
+  ## scan number
+  ms1.scan.rt <- ms1.scan.num <- exist.index <- which( raw.scan.num > 0 )
+  for ( k in 1:length(exist.index) ) {
+    kk <- exist.index[k]
+    raw.file <- paste( cross.vec[kk], "_", segment,".mzXML",sep="")
+    xfile <- mzXML.files[[raw.file]]
+    ms1.scan.num[k] <- which(xfile@acquisitionNum > as.integer(raw.scan.num[kk]))[1]-1
+    if (is.na(ms1.scan.num[k])) {
+      ms1.scan.num[k] <- length(xfile@acquisitionNum)
+    }
+    ms1.scan.rt[k] <- xfile@scantime[ms1.scan.num[k]]
+  }
+
+  r2.v <- l.ratios <- light.int.v <- i.ratios <- rep(NA,ncross)
+  for ( j in 1:ncross ) {
+    raw.file <- paste( cross.vec[j], "_", segment,".mzXML",sep="")
+    xfile <- mzXML.files[[raw.file]]
+    ## tag * and tag rt line
+    if ( j %in% exist.index ) {
+      tag <- "*"
+      tag.ms1.scan.num <- ms1.scan.num[match(j,exist.index)]
+      tag.rt <- xfile@scantime[tag.ms1.scan.num]/60
+    } else {
+      tag <- ""
+      tag.ms1.scan.num <- NA
+      tag.rt <- NA
+    }
+    ##chromatogram bottom
+    raw.ECI.light <- rawEIC(xfile, c(mz.light*(1-mz.ppm.cut), mz.light*(1+mz.ppm.cut)) )
+    raw.ECI.heavy <- rawEIC(xfile, c(mz.heavy*(1-mz.ppm.cut), mz.heavy*(1+mz.ppm.cut)) )
+    scan.time.range <- range(xfile@scantime)
+    rt.min <- min(ms1.scan.rt)-rt.window.width
+    if (rt.min > scan.time.range[2]) {
+      rt.min <- scan.time.range[2] - 2*rt.window.width
+    } else {
+      rt.min <- max(rt.min, scan.time.range[1] )
+    }
+    rt.max <- max(ms1.scan.rt)+rt.window.width
+    if (rt.max < scan.time.range[1] ) {
+      rt.max <- scan.time.range[1] + 2*rt.window.width
+    } else {
+      rt.max <- min(rt.max,scan.time.range[2])
+    }
+    if ( (rt.max - rt.min) < 2*rt.window.width ) {
+      if ( rt.max == scan.time.range[2] ) {
+        rt.min <- rt.max - 2*rt.window.width
+      } else if (rt.min == scan.time.range[1]) {
+        rt.max <- rt.min + 2*rt.window.width
+      }
+    }
+    xlimit <-c(which(xfile@scantime>rt.min)[1]-1, which(xfile@scantime>rt.max)[1] )
+    if (is.na(xlimit[2]) ) xlimit[2] <- length(xfile@scantime)
+    ylimit <- range(c(raw.ECI.light[[2]][xlimit[1]:xlimit[2]], raw.ECI.heavy[[2]][xlimit[1]:xlimit[2]]))
+    ylimit[1] <- 0.0
+    ylimit[2] <- ylimit[2]*1.2
+    y.offset <- ylimit[2]*0.1
+    local.xlimit <- xlimit <- c(rt.min,rt.max)/60
+    raw.ECI.light.rt <- xfile@scantime[ raw.ECI.light[[1]] ] / 60
+    raw.ECI.heavy.rt <- xfile@scantime[ raw.ECI.heavy[[1]] ] / 60
+
+    plot(raw.ECI.light.rt, raw.ECI.light[[2]], type="l", col="red",xlab="Retention Time(min)",
+         ylab="Intensity", main="", xlim=xlimit,ylim=ylimit)
+    multiTitle(color="black", paste(cell," - ", sep=""),
+               color="red", conc.vec[j],
+               color="black", " vs ",
+               color="blue", conc.vec[1])
+    lines(raw.ECI.heavy.rt, raw.ECI.heavy[[2]], col='blue', xlim=xlimit, ylim=ylimit)
+    k.ms1.rt.v <- numeric(0)
+    if ( !is.na(tag.rt) ) {
+      all.ms2.scan <- as.integer( all.scan.table[(key==all.scan.table[,"key"]
+                                                  &cross.vec[j]==all.scan.table[,"run"]),"scan"] )
+      for (k in 1:length(all.ms2.scan)) {
+        k.ms1.scan <- which(xfile@acquisitionNum > all.ms2.scan[k])[1]-1
+        if (is.na(k.ms1.scan)) {
+          k.ms1.scan <- length(xfile@acquisitionNum)
+        }
+        k.ms1.rt <- xfile@scantime[k.ms1.scan]/60
+        points(k.ms1.rt, raw.ECI.light[[2]][k.ms1.scan], type='p',cex=0.5, pch=1)
+        k.ms1.rt.v <- c(k.ms1.rt.v,k.ms1.rt)
+      }
+      ##lines(c(tag.rt,tag.rt),c(0.0, max(raw.ECI.light[[2]],raw.ECI.heavy[[2]])), col="green")
+      ##points(tag.rt, raw.ECI.light[[2]][tag.ms1.scan.num], type='p',pch=8)
+
+      ## guess ratio of integrated peak area
+      local.xlimit <- c(max(scan.time.range[1]/60, tag.rt-local.rt.window),
+                        min(scan.time.range[2]/60, tag.rt+local.rt.window))
+    }
+    ## guess ratio of integrated peak area
+    peaks <- findPairChromPeaks( raw.ECI.light.rt, raw.ECI.light[[2]], raw.ECI.heavy[[2]],
+                                xlimit, local.xlimit, sn )
+
+    noise.light <- peaks[1]
+    lines(xlimit,c(noise.light, noise.light), col='red', type='l', lty=2)
+    noise.heavy <- peaks[2]
+    lines(xlimit,c(noise.heavy, noise.heavy), col='blue', type='l', lty=2)
+    peaks <- peaks[-c(1,2)]
+    n.peaks <- length(peaks)/2
+
+    best.peak.scan.num <- best.mono.check <- best.r2 <- best.npoints <- best.light.int <- best.ratio <- 0.0
+    best.xlm <- best.light.yes <- best.heavy.yes <- best.low <- best.high <- c(0)
+    best.fixed <- F
+    n.candidate.peaks <- n.ms2.peaks <- 0
+    if (n.peaks>0) {
+      for (n in 1:n.peaks) {
+        low <- peaks[2*n-1]
+        high<- peaks[2*n]
+        yes <- which( raw.ECI.light.rt>=low & raw.ECI.light.rt<=high )
+        light.yes <- raw.ECI.light[[2]][yes]
+        heavy.yes <- raw.ECI.heavy[[2]][yes]
+
+        peak.scan.num <- raw.ECI.light[[1]][yes][which.max(light.yes)]
+        peak.scan <- getScan(xfile, peak.scan.num, massrange=c((mono.mass-2)/charge, mz.heavy) )
+        mono.check <- checkChargeAndMonoMass( peak.scan, mono.mass, charge, mz.ppm.cut, predicted.dist)
+        ## calculate ratio of integrated peak area
+        ratio <- round(sum(light.yes)/sum(heavy.yes),digits=2)
+        lines(c(low,low),ylimit/10, col="green")
+        lines(c(high,high),ylimit/10, col="green")
+        text(mean(c(low,high)),max(light.yes,heavy.yes)+1.5*y.offset,
+             labels=paste("R:",formatC(ratio,format="f",digits=2)))
+        text(mean(c(low,high)),max(light.yes,heavy.yes)+0.8*y.offset,
+             labels=paste("Env:",formatC(mono.check,format="f",digits=2)))
+        ## calculate peak co-elution profile using only points above noise line
+        ##yes2 <- light.yes > noise.light & heavy.yes > noise.heavy
+        ##light.yes <- light.yes[yes2]
+        ##heavy.yes <- heavy.yes[yes2]
+        if (ratio > ratio.range[2] | ratio < ratio.range[1]) next
+        if (mono.check < 0.80) next
+        npoints <- length(light.yes)
+        if (npoints<3) {
+          next
+        }
+        ## extra information for better filtering
+        if (length(k.ms1.rt.v>0) & (sum((k.ms1.rt.v>=low & k.ms1.rt.v<=high))>0)) {
+          n.ms2.peaks <- n.ms2.peaks + 1
+        }
+        x.lm <- lsfit( x=heavy.yes, y=light.yes,intercept=F )
+        r2 <- round(as.numeric(ls.print(x.lm,print.it=F)$summary[1,2]),digits=2)
+        if (r2>0.8) {
+          n.candidate.peaks <- n.candidate.peaks + 1
+        }
+        if ( !is.na(tag.rt) & tag.rt>=low & tag.rt<=high) {
+          best.fixed <- T
+        }
+        if ( best.fixed | (best.mono.check < 0.95 & mono.check >= best.mono.check) |
+            ( best.mono.check >=0.95 & mono.check >=0.95 & max(light.yes)>max(best.light.yes) ) ) {
+          best.mono.check <- mono.check
+          best.npoints <- npoints
+          best.r2 <- r2
+          best.ratio <- ratio
+          best.light.int <- sum(light.yes)
+          best.xlm <- round(as.numeric(ls.print(x.lm,print.it=F)$coef.table[[1]][,"Estimate"]),digits=2)
+          best.low <- low
+          best.high <- high
+          best.light.yes <- light.yes
+          best.heavy.yes <- heavy.yes
+          best.peak.scan.num <- peak.scan.num
+        }
+        if (best.fixed) break
+      }
+    }
+    if ( best.r2 != 0 ) {
+      lines(c(best.low,best.low),ylimit/1.2, col="green")
+      lines(c(best.high,best.high),ylimit/1.2, col="green")
+      plot(best.heavy.yes,best.light.yes,
+           xlab="Intensity.heavy", ylab="Intensity.light",
+           main=paste("X=",formatC(best.xlm,format="f",digits=2),"; R2=",formatC(best.r2,format="f",digits=2),
+             "; Np=", best.npoints, sep=""),
+           xlim=c(0, max(best.light.yes,best.heavy.yes)),
+           ylim=c(0, max(best.light.yes,best.heavy.yes)),axes=F)
+      tic <- seq(0,max(best.light.yes, best.heavy.yes),length=4)
+      axis(side=1,at=tic, labels=c("0",formatC(tic[2:4], format="e",digits=1)))
+      tic <- seq(0,max(best.light.yes, best.heavy.yes),length=2)
+      axis(side=2,at=tic, labels=c("0",formatC(tic[2:2],format="e",digits=1)))
+      box()
+      abline(0,best.xlm)
+      abline(0,1,col="grey")
+      i.ratios[j] <- best.ratio
+      light.int.v[j] <- best.light.int
+      ##l.ratios[j] <- best.xlm
+      r2.v[j] <- best.r2
+      ## plot raw spectrum
+      predicted.dist <- predicted.dist[1:20]
+      predicted.dist.merge <- best.ratio*c(predicted.dist, rep(0,mass.shift)) + c(rep(0,mass.shift),predicted.dist)
+      n.max <- which.max(predicted.dist.merge)
+      predicted.dist.merge <- predicted.dist.merge/predicted.dist.merge[n.max]
+      mz.unit <- isotope.mass.unit/charge
+      predicted.mz <- mono.mz + mz.unit*(seq(1,length(predicted.dist.merge))-1)
+      mz.max <- predicted.mz[n.max]
+      mass.range <- c(mono.mz-2*mz.unit, mz.heavy+8*mz.unit)
+      scan.data <- getScan(xfile, best.peak.scan.num, massrange=mass.range)
+      scan.mz <- scan.data[,"mz"]
+      scan.int <- scan.data[,"intensity"]
+      observed.int <- predicted.mz
+      for ( k in 1:length(observed.int) ) {
+        this.mz <- predicted.mz[k]
+        mz.diff <- abs(scan.mz-this.mz)/this.mz
+        if (min(mz.diff) <= mz.ppm.cut ) {
+          observed.int[k] <- scan.int[which.min(mz.diff)]
+        } else {
+          observed.int[k] <- 0.0
+        }
+      }
+      int.max <- observed.int[n.max]
+      if ( max(int.max) > 0.0 ) {
+        observed.int <- observed.int / int.max
+        scan.int <- scan.int / int.max
+      } else {
+        scan.int <- scan.int/max(scan.int)
+      }
+      ylimit <- c(0,1.1)
+      plot(scan.mz, scan.int*int.max, type='h', xlab="m/z", ylab="Intensity", xlim=mass.range, ylim=ylimit*int.max, col="gray",axes=F)
+      par(new=T)
+      plot(predicted.mz, observed.int*int.max, type='h',xlab="", ylab="", xlim=mass.range, ylim=ylimit*int.max, col="black",axes=F)
+      par(new=T)
+      plot( predicted.mz, predicted.dist.merge*int.max, type='b',xlab="",ylab="",col="green",axes=F,xlim=mass.range,ylim=ylimit*int.max)
+      tic.gap <- max(1,floor((mass.range[2]-mass.range[1])/4))
+      tic <- seq(ceiling(mass.range[1]),floor(mass.range[2]),by=tic.gap)
+      axis(side=1,at=tic, labels=formatC(tic, format="d"))
+      tic <- c(0,int.max)
+      axis(side=2,at=tic, labels=c("0",formatC(int.max,format="e",digits=1)))
+      box()
+      light.n <- seq(1,(mass.shift))
+      points(predicted.mz[light.n],rep(0,length(light.n)), pch=23,col="red",bg="red")
+      heavy.n <- seq((mass.shift+1),2*mass.shift)
+      points(predicted.mz[heavy.n],rep(0,length(heavy.n)), pch=24,col="blue",bg="blue")
+      title( paste("Scan # ", xfile@acquisitionNum[best.peak.scan.num]))
+    } else {
+      ##plot(0,0,xlab="",ylab="",main=paste("R2 value: 0.00") )
+      plot(0,0,xlab="",ylab="",main=paste("R2 value: 0.00") )
+      plot(0,0,xlab="",ylab="",main=paste("Empty ms1 spectrum") )
+    }
+    l.ratios[j] <- paste(n.ms2.peaks, n.candidate.peaks, sep="/")
+  } ## each ratio j
+  mtext(paste("Protein:", cross.table[i,"ipi"],"-",description),line=3.5, outer=T)
+  mtext(paste("Peptide: ", cross.table[i,"peptide"]), line=2,outer=T)
+  multiMtext(color="black", paste("MuDPIT segment: ", segment,"; Charge: ", as.character(charge),"; m/z: ", sep=""),
+             color="red", as.character(formatC(mz.light, format="f", digits=3)),
+             color="black", " and ",
+             color="blue", as.character(formatC(mz.heavy,format="f", digits=3)))
+
+  ## save data in outdf
+  this.df <- c(i, ipi, description, symbol, peptide, round(mass,digits=4), charge, segment,
+               i.ratios, light.int.v, l.ratios, r2.v, entry.index,
+               paste('=HYPERLINK(\"./PNG/', out.filename.base,'-', as.character(i-1),'.png\")',sep=''))
+  names(this.df) <- column.names
+  out.df <- rbind(out.df, this.df)
+} ## each entry i
+dev.off()
+
+all.table <- out.df
+all.table.out <- all.table[F,]
+rsq.cutoff <- 0.8
+
+## go from high concentration to low concentration,
+## first apply R2 cutoff and sort by IR values
+for ( s in seq(ncross, 1) ) {
+  colname.R2 <- linear.regression.R2[s]
+  colname.IR <- integrated.area.ratio[s]
+  rsq.filter <- all.table[,colname.R2] >= rsq.cutoff & !is.na(all.table[,colname.R2])
+  table <- all.table[rsq.filter,]
+  s1 <- as.numeric(table[,colname.IR])
+  s2 <- as.numeric(table[,"entry"])
+  s3 <- as.numeric(table[,"charge"])
+  s4 <- as.numeric(table[,"segment"])
+  ii <- order(s1, s2, s3, s4)
+  table <- table[ii,]
+  all.table.out <- rbind(all.table.out, table)
+  all.table <- all.table[!rsq.filter,]
+}
+all.table.out <- rbind(all.table.out, all.table)
+## output the final table
+row.names(all.table.out) <- as.character(seq(1:dim(all.table.out)[1]) )
+all.table.out[,"index"] <- seq(1:dim(all.table.out)[1])
+write.table(all.table.out,file=paste(output.path,"/",out.filename.base,".to_excel.txt",sep=""),
+            quote=F, sep="\t", row.names=F,na="0.00")

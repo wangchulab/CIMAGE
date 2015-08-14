@@ -1,0 +1,1 @@
+require.config({paths:{jquery:"vendor/jquery",underscore:"vendor/underscore",imagesLoaded:"vendor/imagesloaded.pkgd"}}),require(["cimage-preview/js/preview","cimage-utils/js/utils"],function(){});

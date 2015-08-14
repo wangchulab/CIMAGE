@@ -1,0 +1,88 @@
+#!/usr/bin/perl
+
+#  FOLDERIZE  Gabe Simon (C) 2008, TSRI - gabriels@scripps.edu
+#  This script tails all the *.log files from the current directory and queries the user for acceptible logs. 
+#  All of the passing files (filename.RAW, filename_itms.log, filename_itms.ms2, filename_itms.sqt) are placed
+#  into their own folder.
+
+
+
+if ($ARGV[0] =~ /noitms/gi) {
+	$filebaseext = "";
+} else {
+	$filebaseext = "_itms";
+}
+
+
+opendir (DIR, ".") or die "cannot read directory";
+@dircontents = grep !/^\.\.?$/, readdir(DIR);
+closedir(DIR);
+
+%filebases = ();
+
+foreach (@dircontents) {
+	if (-d $_) {
+	} else {
+		if ($_ =~ /(\.raw|\.log|\.ms2|\.sqt)/i) {
+			$_ =~ /^([^\.]+)/;
+#		print "$1\n";
+			if ($filebaseext ne "") {
+				$_ =~ s/$filebaseext//g;
+			}
+			$filebases{$1} = 1;
+		}
+	}
+}
+
+#system ("clear");
+
+foreach (keys %filebases) {
+        if (($_ !~ /(sequest|validator|organize)/) && ($_ ne "")){
+#        if ($_ =~ /(raw|log|ms2|sqt)/i) {
+		++$tolfiles;
+	}
+}
+
+if ($tolfiles <1) {
+#	system("clear");
+	die "\n\nERROR: No SEQUEST jobs found!\n\n";
+} else {
+	system("clear");
+}
+
+
+foreach (keys %filebases) {
+	if (($_ !~ /(sequest|validator|organize)/) && ($_ ne "")){
+#        if ($_ =~ /(raw|log|ms2|sqt)/i) {
+		++$counter;
+		print "\n[$counter of $tolfiles]: $_:\n\n";
+		$curcmd = "tail $_" . "$filebaseext.log";
+		print "$curcmd\n\n";
+		system ($curcmd);
+		$dummy = "";
+#		chomp ($dummy = <>) unless ($dummy eq "Y");
+		while ((lc($dummy) ne "y") && (lc($dummy) ne "n") && (lc($dummy) ne "a")) {
+			print "\nAccept this job? (Y)es, (N)o, (A)bort: ";
+			chomp ($dummy = <>);
+		}
+		die "\n\nABORT! at user request\n\n" if (lc($dummy) eq "a");
+		$filebases{$_} = lc($dummy);
+	}
+}
+
+print "\n---ORGANIZING FILES AND FOLDERS---\n";
+
+foreach (keys %filebases) {
+	if ($filebases{$_} eq "y") {
+		++$yesses;
+		$curcmd = "mkdir $_; mv $_\.RAW $_; mv $_" . "$filebaseext\.\* $_";
+#		print "$curcmd\n";
+		system($curcmd);
+	}
+}
+system("clear");
+if ($yesses > 0) {
+	print "\nFINISHED!  Grouped $yesses of $tolfiles SEQUEST jobs into separate folders.\n\nThank you, have a nice day!\n\n";
+} else {
+	print "\n\nNo SEQUEST jobs were selected.\n\n";
+}

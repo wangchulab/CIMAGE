@@ -1,0 +1,188 @@
+#!/usr/bin/perl
+
+####################################################################
+#
+# fixbadpeps - v0.2 (c) 2009 Gabe Simon
+#
+# this script parses Chu's .to_excel.txt summary files and replaces
+# the ratios for those peptides with 0.00 ratios (not assigned)
+# with a "ratio" based on the spectral-counts contained in the 
+# heavy- and light- DTASelect files.
+#
+# If spectral counts are detected in only one or the other DTASelect
+# file peptides are given ratios of 32 or 1/32.  Otherwise, the ratios
+# are determined from the ratio of light-to-heavy spectral-counts.
+#
+# Changed ratios are recorded in fixedpeptides.log.
+#
+####################################################################
+
+
+open (PARAMS, 'qpmap.params') or die "cannot open params file: qpmap.params";
+@params = <PARAMS>;
+close PARAMS;
+
+
+for ($i = 0; $i < scalar @params; ++$i) {
+    if ($params[$i] =~ /^\#+\s*Options/) {
+	++$i;
+	while ($params[$i] !~ /^#/) {
+	    if ($params[$i] !~ /^\s/) {
+		@curoption = split(/\s+/,$params[$i]);
+		$option{$curoption[0]} = $curoption[1];
+	    }
+	    ++$i;
+	}
+    }
+    if ($params[$i] =~ /^\#+\s*Band locations/) {
+	++$i;
+	while (($params[$i] !~ /^\#/) && ($i < scalar @params)){
+	    if (($params[$i] !~ /^\#/) && ($params[$i] !~ /^\s+$/)){
+		chomp $params[$i];
+		if (-d $params[$i]) {
+		    push (@dirs, $params[$i]);
+		} else {
+		    die "\n\tERROR! $params[$i] could not be found!!!\n\n";
+		}
+	    }
+	    ++$i;
+	}
+    }
+}
+
+open (LOG, '>fixed_peptides.log') or die "ERROR! Cannot write to fixed_peptides.log\n";
+
+
+print "params file parsed, found " . scalar @dirs . " directories\n";
+print LOG "params file parsed, found " . scalar @dirs . " directories\n";
+
+$r2min = $option{"r2min"};
+print "r2min:\t$r2min\n\n";
+print LOG "r2min:\t$r2min\n\n";
+
+for ($i = 0; $i < scalar @dirs; ++$i) {
+#for ($i = 0; $i < 2; ++$i) {
+    if ($dirs[$i] !~ /\/$/) {
+	$dirs[$i] .= '/';
+    }
+    
+#    $dirs[$i] =~ /^([^\/]*)\/$/;
+    $dirs[$i] =~ /([^\/]*)\/$/;
+    $rootname = $1;
+
+    print "$dirs[$i] ($rootname):\n";
+    print LOG "$dirs[$i] ($rootname):\n";
+    $curoutputfile = $dirs[$i] . "dta/output/output_rt_10_sn_2.5.to_excel.txt";
+
+
+
+    if (-e $curoutputfile) {
+	print "\toutput file found\n";
+	open (OUTPUT, $curoutputfile) or die "cannot read $curoutputfile";
+	@output = <OUTPUT>;
+	close OUTPUT;
+    } else {
+	push (@warnings, "WARNING!!! could not find $curoutputfile!!!");
+    }
+
+    $heavydtafilename = $dirs[$i] . "dta/DTASelect-filter_$rootname" . "_heavy.txt";
+    $lightdtafilename = $dirs[$i] . "dta/DTASelect-filter_$rootname" . "_light.txt";
+
+    if (-e $heavydtafilename) {
+	print "\t$heavydtafilename found\n";
+	open (HEAVYDTA, $heavydtafilename) or die "ERROR cannot open $heavydtafilename\n";
+	@heavydta = <HEAVYDTA>;
+	close HEAVYDTA;
+    } else {
+	print "\t\tERROR!  Cannot find $heavydtafilename\n";
+    }
+
+    if (-e $lightdtafilename) {
+	print "\t$lightdtafilename found\n";
+	open (LIGHTDTA, $lightdtafilename) or die "ERROR! cannot open $lightdtafilename\n";
+	@lightdta = <LIGHTDTA>;
+	close LIGHTDTA;
+    } else {
+	print "\t\tERROR!  Cannot find $lightdtafilename\n";
+    }
+
+    $newoutputfile = $dirs[$i] . "dta/output/fixed_output.to_excel.txt";
+    open (NEWOUT, ">$newoutputfile") or die "cannot write to $newoutputfile\n";
+
+    print NEWOUT $output[0];
+
+ #   print "\t\tAccesion number\tPeptide sequence\tMatching peptide sequence\tOriginal ratio\tOriginal r2\tHeavy spectral-counts\tLight spectral-counts\tnew ratio\n";
+    print LOG "\t\tAccesion number\tPeptide sequence\tMatching peptide sequence\tOriginal ratio\tOriginal r2\tHeavy spectral-counts\tLight spectral-counts\tnew ratio\n";
+
+    for ($j = 1; $j < scalar @output; ++$j) {
+
+	@curoutputline = split(/\t/,$output[$j]);
+
+	$curpeprat = $curoutputline[8];
+	$curpepseq = $curoutputline[4];
+	$curpepipi = $curoutputline[1];
+	$goodpepseq = $curpepseq;
+	$goodpepseq =~ s/\*/\\*/g;
+	$curpepr2 = $curoutputline[11];
+
+	if (($curpeprat > 0) && ($curpepr2 >= $r2min)){
+	    print NEWOUT $output[$j];
+	} else {
+#	    print "\t\t$curpepipi\t$curpepseq\t$goodpepseq\t$curpeprat\t$curpepr2";
+	    print LOG "\t\t$curpepipi\t$curpepseq\t$goodpepseq\t$curpeprat\t$curpepr2";
+	    ($heavyspectralcounts, $lightspectralcounts) = (0,0);
+	    foreach (@heavydta) {
+		if ($_ =~ /$goodpepseq/) {
+		    @curdtarow = split(/\t/,$_);
+		    $heavyspectralcounts = $curdtarow[11];
+		}
+	    }
+	    foreach (@lightdta) {
+		if ($_ =~ /$goodpepseq/) {
+		    @curdtarow = split(/\t/,$_);
+		    $lightspectralcounts = $curdtarow[11];
+		}
+	    }
+#	    print "\t$heavyspectralcounts\t$lightspectralcounts";
+	    print LOG "\t$heavyspectralcounts\t$lightspectralcounts";
+	    if ($heavyspectralcounts > 0) {
+		if ($lightspectralcounts > 0) {
+		    $newratio = $lightspectralcounts / $heavyspectralcounts;
+		} elsif ($lightspectralcounts == 0) {
+		    $newratio = 0.03125;
+		}
+	    } elsif ($heavyspectralcounts == 0) {
+		if ($lightspectralcounts > 0) {
+		    $newratio = 32;
+		}
+	    }
+
+	    $curoutputline[11] = 1; #<--- set the r2 value to 1 for fixedrats 
+	    $curoutputline[8] = $newratio;
+
+	    $newoutputline = join(chr(9),@curoutputline);
+
+	    print NEWOUT $newoutputline;
+
+#	    print "\t$newratio";
+	    print LOG "\t$newratio";
+#	    print "\n";
+	    print LOG "\n";
+	}
+    }
+
+    close NEWOUT;
+
+
+}
+
+if (scalar @warnings > 0) {
+    print "\n\nCAUTION:  Error messages were detected:\n\n";
+    foreach (@warnings) {
+	print "$_\n";
+    }
+}
+
+print "\n\tDone! A record of changes is saved in fixed_peptides.log\n\n";
+
+close LOG;

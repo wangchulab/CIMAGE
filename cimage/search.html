@@ -1,0 +1,125 @@
+<html>
+<head><title>Cravatt-lab CIMAGE Database</title>
+<style>
+ul{list-style: none}
+a{text-decoration:none}
+a:hover{color:orange; /*text-decoration:underline; font-style: italic;*/}
+</style>
+<SCRIPT>
+function clearDefault(el){
+if(el.defaultValue==el.value) el.value=""
+}
+</SCRIPT>
+</head>
+<body link="3333FF" vlink="337733">
+<center><font face="arial, helvetica">
+<H2>Cravatt-lab CIAMGE database</H2>
+<p><IMG SRC="/srv/www/htdocs/cimage/isotopabpp.jpg"><p>
+<HR WIDTH=75%>
+
+
+<FORM METHOD=post ACTION="/cgi-bin/cravatt/frmrec.pl" ENCTYPE="multipart/form-data" NAME="keywordsearch">
+Select dataset to search:
+
+<SELECT NAME="dset">
+<OPTION VALUE="sncells2.txt,sncolon.txt,brmemsol.txt,jbmbrmemsol.txt,rb_memsol.txt,gs_mtissue.txt,wwl_abh6inhib.txt,lungmem.txt,sn_humtum.txt,rn_glioma.txt,atw_elegans1.txt,bm_melanom.txt,david_ptumor.txt,wwl_adip.txt,jpa_urb_lilly.txt,jpa_bv2.txt,hh_mafp.txt,dn_mbr_idfpcpo.txt,rhc_orl_mafp.txt,rhc_orl.txt,snxentum.txt,kb_lv_fp.txt,kb_lvsol_ld.txt,bm_jurkat_palmprobe.txt,bm-melanom-pprobe.txt,cleo_mum2b_2c_ov.txt,ps_hum.txt,ps_mouse.txt,aw_p450_liver.txt,sas_mmps.txt">ALL DATASETS</option>
+<OPTION VALUE="sncells2.txt">Sherry's human cell lines</OPTION>
+<OPTION VALUE="sncolon.txt">[S]Sherry's colon cell lines</OPTION>
+<OPTION VALUE="brmemsol.txt">Gabe's brain mem/sol (mouse)</OPTION>
+<OPTION VALUE="jbmbrmemsol.txt">[S]Jackie's brain mem/sol (mouse)</OPTION>
+<OPTION VALUE="rb_memsol.txt">[S]Rat Brain Mem/Sol (ST)</OPTION>
+<OPTION VALUE="gs_mtissue.txt">Gabe's mouse tissues</OPTION>
+<OPTION VALUE="wwl_abh6inhib.txt">Weiwei's ABH6 inhibitor (mouse brain mem)</OPTION>
+<OPTION VALUE="lungmem.txt">Jackie's lung membrane (mouse)</OPTION>
+<OPTION VALUE="sn_humtum.txt">Sherry's human tumors</OPTION>
+<OPTION VALUE="rn_glioma.txt">Ryuichiro's glioma cell-lines (FP)</OPTION>
+<OPTION VALUE="atw_elegans1.txt">[S]Aarons's C.Elegans (FP)</OPTION>
+<OPTION VALUE="bm_melanom.txt">[S]Brent's UACC257 melanoma cells (FP)</OPTION>
+<OPTION VALUE="bm-melanom-pprobe.txt">[S]Brent's melanoma cells (palmitate probe)</OPTION>
+<OPTION VALUE="jpa_urb_lilly.txt">Jessica's brain inhibitors (URB597 & Lilly cpd)</OPTION>
+<OPTION VALUE="jpa_bv2.txt">Jessica's BV2 cells</OPTION>
+<OPTION VALUE="hh_mafp.txt">[S]MAFP IC50s in mouse brain membrane (HH)</OPTION>
+<OPTION VALUE="dn_mbr_idfpcpo.txt">[S]DN's mouse brain w/ IDFP or CPO</OPTION>
+<OPTION VALUE="rhc_orl_mafp.txt">RHC80267, Orlistat, MAFP in mouse brain membrane (HH)</OPTION>
+<OPTION VALUE="rhc_orl.txt">RHC/Orlistat in brain membrane</OPTION>
+<OPTION VALUE="snxentum.txt">Sherry's 231MFP xenografts</OPTION>
+<OPTION VALUE="david_ptumor.txt">David's Pancreatic tumors</OPTION>
+<OPTION VALUE="wwl_adip.txt">[S]WeiWei's adipocytes</OPTION>
+<OPTION VALUE="kb_lv_fp.txt">Katy's liver mem/sol FP-probe</OPTION>
+<OPTION VALUE="bm_jurkat_palmprobe.txt">[S]Brent's Jurkats with the palmityl probe</OPTION>
+<OPTION VALUE="kb_lvsol_ld.txt">Katy's liver cytosol LD-probe</OPTION>
+<OPTION VALUE="cleo_mum2b_2c_ov.txt">Cleo's HDAC probes (Mum2b, Mum2c, OVCAR)</OPTION>
+<OPTION VALUE="eft2.txt">PS and CA probes in breast and ovarian cancer cells (tryptic)</OPTION>
+<OPTION VALUE="ps_mouse.txt">PS probes in mouse tissue</OPTION>
+<OPTION VALUE="ps_hum.txt">PS probes in human cell-lines</OPTION>
+<OPTION VALUE="aw_p450_liver.txt">Aaron's P450 probes in mouse liver</OPTION>
+<OPTION VALUE="sas_mmps.txt">Stephan's MMP dataset</OPTION>
+<!-<OPTION VALUE="wwl_misc.txt">WWL misc</OPTION>>
+
+</SELECT>
+<P>
+
+Enter keyword or IPI number:  <INPUT TYPE="text" NAME="searchterm" SIZE=20 VALUE="search term" onfocus="clearDefault(this)">
+<A style="cursor:pointer"><IMG SRC="homo_icon.gif" border=0 onClick=document.keywordsearch.searchterm.value="##human-shs-ipi##">
+<A style="cursor:pointer"><IMG SRC="mouse_icon.gif" BORDER=0 onClick=document.keywordsearch.searchterm.value="##mouse-shs-ipi##"></A>
+<A style="cursor:pointer"><IMG SRC="rat_icon.gif" BORDER=0 onClick=document.keywordsearch.searchterm.value="##rat-shs-ipi##"></A>
+<A style="cursor:pointer"><IMG SRC="ce_igon.gif" BORDER=0 onClick=document.keywordsearch.searchterm.value="##worm-shs-ipi##"></A>
+<br><font color="aaaaaa" size=-1>Click the mouse or human for all serine-hydrolase IPIs</font>
+<br><font color="aaaaaa" size=-1><p>Tip: Search for multiple keywords or IPI numbers by separating values with the pipe '|' character, e.g., esterase|lipase returns 'esterase' OR 'lipase'.  You may find it useful to visit EBI's <A HREF="http://www.ebi.ac.uk/IPI/IPIhelp.html">IPI database</A>.<p></font>
+
+
+
+<INPUT TYPE=submit VALUE="Submit"> <INPUT TYPE="reset" VALUE="Reset"></FORM>
+
+<FORM METHOD=post ACTION="/cgi-bin/cravatt/wblasta.pl" ENCTYPE="multipart/form-data">
+<HR WIDTH=75%><P>Or search by peptide:
+<INPUT TYPE="text" NAME="sstring" VALUE="peptide sequence" onfocus="clearDefault(this)">
+<INPUT TYPE=submit VALUE="Submit"></FORM><BR>
+
+<FONT COLOR="aaaaaa" size=-1><P>Tip:  Use the pipe '|' character to separate multiple queries.  A period '.' represents any amino acid (wild-card) and a period followed by an asterisk '.*' represents an unlimited stretch of wild-cards.
+
+<BR><HR WIDTH=75%>
+<A HREF="http://www.scripps.edu/~gabriels/snchips.htm">Click here</A> to search Sherry's cancer-cell microarray data.<P>
+
+NOTE:  You can also download the complete datasets here.  These plain-text files can be opened in Microsoft Excel and pruned/sorted however you want:<p>
+<ul><li><A HREF="clmpd/sncells2.txt">Sherry's human cell lines</A></LI>
+<li><A HREF="clmpd/sncolon.txt">Sherry's colon cell lines</A></LI>
+<LI><A HREF="clmpd/brmemsol.txt">Gabe's brain mem/sol (mouse)</A></LI>
+<LI><A HREF="clmpd/jbmbrmemsol.txt">Jackie's brain mem/sol (mouse)</A></LI>
+<LI><A HREF="clmpd/gs_mtissue.txt">Gabe's mouse tissues</A></LI>
+<LI><A HREF="clmpd/lungmem.txt">Jackie's lung membrane (mouse)</A></LI>
+<LI><A HREF="clmpd/sas_mmps.txt">Stephan's MMP dataset</A></LI>
+<LI><A HREF="clmpd/sn_humtum.txt">Sherry's human tumors</A></LI>
+<LI><A HREF="clmpd/jpa_urb_lilly.txt">Jessica's brain inhibitors (URB597 & the Lilly cpd)</A></LI>
+<LI><A HREF="clmpd/jpa_bv2.txt">Jessica's BV2 cells</A></LI>
+<LI><A HREF="clmpd/rhc_orl_mafp.txt">Heather's RHC80267, Orlistat and MAFP in brain mem</A></LI>
+<LI><A HREF="clmpd/rhc_orl.txt">RHC/Orlistat in brain mem</A></LI>
+<LI><A HREF="clmpd/snxentum.txt">Sherry's 231mfp xenografts</A></LI>
+<LI><A HREF="clmpd/david_ptumor.txt">David's Pancreatic Tumors</A></LI>
+<LI><A HREF="clmpd/wwl_adip.txt">WeiWei's L1 adipocytes</A></LI>
+<LI><A HREF="clmpd/kb_lv_fp.txt">Katy's liver mem/sol FP-probe</A></LI>
+<LI><A HREF="clmpd/kb_lvsol_ld.txt">Katy's liver cytosol LD-probe</A></LI>
+<LI><A HREF="clmpd/cleo_mum2b_2c_ov.txt">Cleo's HDAC probes</A></LI>
+<LI><A HREF="clmpd/eft2.txt">PS and CA probes with breast- and ovarian-cancer cell lines (tryptic)</A></LI>
+<LI><A HREF="clmpd/ps_mouse.txt">PS probes in mouse tissue</A></LI>
+<LI><A HREF="clmpd/ps_hum.txt">PS probes in human cell-lines</A></LI>
+
+
+
+</UL>
+
+Want to add your own dataset?  <a href="instr.htm">Click here.</a><BR>
+
+<A HREF="http://www.scripps.edu/cgi-bin/cravatt/showlog.pl" BORDER=0>
+<IMG SRC="wbox.jpg" BORDER=0><IMG SRC="wbox.jpg" BORDER=0><IMG SRC="wbox.jpg" BORDER=0><IMG SRC="wbox.jpg" BORDER=0><IMG SRC="wbox.jpg" BORDER=0><IMG SRC="wbox.jpg" BORDER=0><IMG SRC="wbox.jpg" BORDER=0><IMG SRC="wbox.jpg" BORDER=0><IMG SRC="wbox.jpg" BORDER=0><IMG SRC="wbox.jpg" BORDER=0>
+</A>
+<HR WIDTH=75%>
+<H4>Useful links:</H4>
+<UL><LI><A HREF="http://www.ebi.ac.uk/IPI/IPIhelp.html" TARGET=_blank>IPI Database</A></LI>
+<LI><A HREF="http://www.ebi.ac.uk/blast2/index.html?ipi" TARGET=_blank>BLAST the IPI database</A> - this is how to find the IPI number of a protein you're interested in</LI>
+<LI><A HREF="http://www.ncbi.nlm.nih.gov/Structure/cdd/wrpsb.cgi" TARGET=_blank>Conserved Domain Search</A>
+<LI><A HREF="http://align.genome.jp/" TARGET=_blank>CLUSTALW</A> - Alignment tool</LI>
+</UL>
+
+</BODY>
+</HTML>

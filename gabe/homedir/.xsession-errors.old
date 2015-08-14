@@ -1,0 +1,31 @@
+/etc/opt/gnome/gdm/PreSession/Default: Registering your session with wtmp and utmp
+/etc/opt/gnome/gdm/PreSession/Default: running: /usr/bin/sessreg -a -w /var/log/wtmp -u /var/run/utmp -x "/var/lib/gdm/:0.Xservers" -h "" -l ":0" "gabriels"
+/etc/X11/xim: Checking wether an input method should be started.
+INPUT_METHOD is not set or empty (no user selected input method).
+Trying to start a default input method for the locale en_US.UTF-8 ...
+There is no default input method for the current locale.
+SESSION_MANAGER=local/janus:/tmp/.ICE-unix/10948
+Initializing nautilus-share extension
+Initializing gnome-mount extension
+Initializing nautilus-open-terminal extension
+Beagle Daemon exited with errors.  See ~/.beagle/Log/current-Beagle for more details.
+Nautilus-Share-Message: REFRESHING SHARES
+Nautilus-Share-Message: ------------------------------------------
+Nautilus-Share-Message: spawn arg "net"
+Nautilus-Share-Message: spawn arg "usershare"
+Nautilus-Share-Message: spawn arg "info"
+Nautilus-Share-Message: end of spawn args; SPAWNING
+
+Nautilus-Share-Message: returned from spawn: SUCCESS: 
+Nautilus-Share-Message: exit code 255
+Nautilus-Share-Message: ------------------------------------------
+Nautilus-Share-Message: Called "net usershare info" but it failed: 'net usershare' returned error 255: net usershare: usershares are currently disabled
+
+** Message: drive = 0
+** Message: volume = 0
+** Message: drive = 0
+** Message: volume = 0
+** Message: <info>  Deactivating the current VPN connection.
+
+Window manager warning: CurrentTime used to choose focus window; focus window may not be correct.
+Window manager warning: Got a request to focus the no_focus_window with a timestamp of 0.  This shouldn't happen!

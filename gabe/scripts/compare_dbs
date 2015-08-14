@@ -1,0 +1,113 @@
+#!/usr/bin/perl
+
+die "\n\tYou did not specify two databases\n\tUsage: compare_dbs.pl database1.fasta database2.fasta\n\n" if (($ARGV[0] eq "") || ($ARGV[1] eq ""));
+
+open (DB1, "$ARGV[0]");
+@db1 = <DB1>;
+close DB1;
+
+open (DB2, "$ARGV[1]");
+@db2 = <DB2>;
+close DB2;
+
+%uniquepepholder = ();
+%secondtemp = ();
+
+@ar1 = &justify(@db1);     #justify databases
+@ar2 = &justify(@db2);
+
+foreach (@ar1) {
+    ++$entries1;
+    while ($_ =~ m/([KR][^KR]{8,30}[KR])/g) {
+	$uniquepepholder{$1} = "A";
+    }
+}
+
+$distinct1 = scalar (keys %uniquepepholder);
+
+foreach (@ar2) {
+    ++$entries2;
+    while ($_ =~ m/([KR][^KR]{8,30}[KR])/g) {
+	if ($uniquepepholder{$1} eq "A") {
+	    $uniquepepholder{$1} = "AB";
+	} elsif ($uniquepepholder{$1} eq "AB") {
+	} elsif ($uniquepepholder{$1} eq "B") {
+	} else {
+	    $uniquepepholder{$1} = "B";
+	}
+#	if ($uniquepepholder{$1} <= 1) {
+#	    ++$uniquepepholder{$1};
+#	}
+
+	$secondtemp{$1} += 1;
+    }
+}
+
+
+
+
+$distinct2 = scalar (keys %secondtemp);
+
+$totaldistinct = scalar (keys %uniquepepholder);
+
+%overlapping = ();
+
+
+
+open (OVERLAP, ">overlap.tmp");
+
+foreach (keys %uniquepepholder) {
+    print OVERLAP $_ . "\n" if ($uniquepepholder{$_} eq "AB");
+    ++$overlap if ($uniquepepholder{$_} eq "AB");
+}
+
+close OVERLAP;
+
+
+print "\n\n$ARGV[0]:";
+print "\n\ttotal entries: " . &commify($entries1);
+print "\n\tdistinct peptides: " . &commify($distinct1);
+print "\n\texclusive peptides: " . &commify($distinct1 - $overlap);
+print "\n\n$ARGV[1]:";
+print "\n\ttotal entries: " . &commify($entries2);
+print "\n\tdistinct peptides: " . &commify($distinct2);
+print "\n\texclusive peptides: " . &commify($distinct2 - $overlap);
+
+print "\n\ntotal number of distinct tryptic peptides: " . &commify($totaldistinct);
+$perc = (100*($overlap / $totaldistinct));
+print "\noverlap: " . &commify($overlap) . "\t[" . substr($perc,0,5) . "%]\n\n";
+
+
+
+
+
+
+
+
+
+
+
+sub justify {
+    $entrynum = 0;
+    my @input = @_;
+    my @ensseqs = ();
+    foreach (@input) {
+	
+	chomp $_;
+	$ensseqs[$entrynum] .= $_ if ($_ !~ /^>/);
+	
+	if ($_ =~ /^>/) {
+	    $ensseqs[$entrynum] =~ s/\s+//g;
+	    ++$entrynum;
+	}
+    }
+    return @ensseqs;
+}
+
+
+sub commify {
+    my $input = shift;
+    $input = reverse $input;
+    $input =~ s<(\d\d\d)(?=\d)(?!\d*\.)><$1,>g;
+    return reverse $input;
+}

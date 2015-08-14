@@ -1,0 +1,134 @@
+#!/usr/bin/perl
+
+##############################################################################
+#
+# qp_combine - v0.1 (c) 2009 Gabe Simon
+#
+# replacement for Chu's cimage_combine
+# this script combines all of the fixed_output.to_excel.txt files
+# into a single file called 'qp_combined_pnglocs.txt' that points
+# to the location of all of the chromatographs for a qpmap
+# experiment
+#
+##############################################################################
+
+#use Cwd;
+use Cwd 'abs_path';
+
+open (OUT, '>qp_combined_pnglocs.txt') or die "cannot write";
+
+
+open (PARAMS, 'qpmap.params') or die "cannot open params file: qpmap.params";
+@params = <PARAMS>;
+close PARAMS;
+
+for ($i = 0; $i < scalar @params; ++$i) {
+    if ($params[$i] =~ /^\#+\s*Options/) {
+	++$i;
+	while ($params[$i] !~ /^#/) {
+	    if ($params[$i] !~ /^\s/) {
+		@curoption = split(/\s+/,$params[$i]);
+		$option{$curoption[0]} = $curoption[1];
+	    }
+	    ++$i;
+	}
+    }
+    if ($params[$i] =~ /^\#+\s*Band locations/) {
+	++$i;
+	while (($params[$i] !~ /^\#/) && ($i < scalar @params)){
+	    if (($params[$i] !~ /^\#/) && ($params[$i] !~ /^\s+$/)){
+		chomp $params[$i];
+		if (-d $params[$i]) {
+		    push (@dirs, $params[$i]);
+		} else {
+		    die "\n\tERROR! $params[$i] could not be found!!!\n\n";
+		}
+	    }
+	    ++$i;
+	}
+    }
+}
+
+
+$dbase = $option{"database"};
+$nb = $option{"numbands"};
+$n = $option{"n"};
+$r2min = $option{"r2min"};
+$numdirs = scalar @dirs;
+$expecteddirs = $n * $nb;
+$usefixedrats = $option{"use_fixed_peprats"};
+
+
+print "n=$n, nb=$nb\n";
+
+print "numdirs: $numdirs, expected: $expecteddirs\n";
+
+if ($expecteddirs != $numdirs) {
+    die "\n\n\tERROR!  The number of directories found ($numdirs) did not match the number expected (n=" . $option{"n"} . " * numbands=" . $option{"numbands"} . " = $expecteddirs)\n\n";
+}
+
+
+for ($curreplicate = 0; $curreplicate < $n; ++$curreplicate) {
+
+    for ($i = 0; $i < $nb; ++$i) {
+	$curdir = $i + ($curreplicate * $nb);
+
+	if ($dirs[$curdir] !~ /\/$/) {
+	    $dirs[$curdir] .= '/';
+	}
+	print "$dirs[$curdir]";
+
+
+	if ($usefixedrats == 1) {
+	    $curoutputfile = $dirs[$curdir] . "dta/output/fixed_output.to_excel.txt";
+	} else {
+	    $curoutputfile = $dirs[$curdir] . "dta/output/output_rt_10_sn_2.5.to_excel.txt";
+	}
+
+
+	if (-e $curoutputfile) {
+	    print "\toutput file found\n";
+	}
+
+	$abspath = abs_path($curoutputfile);
+	@pathholder = split(/\//,$abspath);
+	$filename = pop @pathholder;
+	$basepath = join('/',@pathholder);
+
+
+#	print "\tabspath: $abspath\n";
+#	print "\tbasepath: $basepath\n";
+#	print "\tfilename: $filename\n";
+
+	open (OUTPUT, $curoutputfile) or die "cannot read $curoutputfile";
+	@output = <OUTPUT>;
+	close OUTPUT;
+
+	for ($outline = 1; $outline < scalar @output; ++$outline) {
+	    @currow = split(/\t/,$output[$outline]);
+	    ($curipi,$cursym,$curseq) = ($currow[1],$currow[3],$currow[4]);
+	    $currow[13] =~ /HYPERLINK.\"..(.*)$/;
+	    $linkloc = $1;
+	    chop $linkloc;
+	    chop $linkloc;
+	    $linkloc = $basepath . '/' . $linkloc;
+#	    print "$linkloc\n";
+   
+	    $srcimgloc = $linkloc;
+
+	    if ($srcimgloc =~ /gabriels/g) {
+		$srcimgloc =~ s/\/home\/gabriels\//\/~gabriels\//;
+	    } elsif ($srcimgloc =~ /jscisar/g) {
+		$srcimgloc =~ s/\/home\/jscisar\//\/~jscisar\/public_data\//;
+	    }
+#	    print "$srcimgloc\n";
+	    print OUT join(chr(9), ($curreplicate, $i, $curipi, $cursym, $curseq, $srcimgloc) ) . "\n";
+
+	}
+	
+    }
+}
+
+close OUT;
+
+print "done!\n\n";

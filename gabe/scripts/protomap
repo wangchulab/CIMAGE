@@ -1,0 +1,540 @@
+#!/usr/bin/perl 
+############################################################################
+#
+#       PROTOMAP.pl - v1.98
+#
+#       This script reads sequence coverage (from coverg.txt files) and spectral counting
+#       data from directories specified in protomap.params.  The sequence coverage
+#       and spectral-count data is combined into a single output file called
+#       alldata.pmap.  This .pmap file can be used to generate peptographs using
+#       the peptographer.pl script.  It is recommended that you rename alldata.pmap
+#       with a descriptive filename after running protomap.pl.
+#
+#       In addition to alldata.pmap, this script also produces two files: dtpma.txt and 
+#       dtpma_p.txt which contain detailed spectral count-information for all of the 
+#       individual peptides and proteins, respectively.
+#
+#       Gabe Simon (c)2008 - gabriels@scripps.edu
+#
+#       v1.98 - greedy accession number matching - peptides match all avaiable accession
+#               numbers, not just the top one
+#       v1.972 - minor bug fix (081019)
+#       v1.97 - added support for all databases, not just IPI (080924)
+#
+############################################################################
+
+
+###################### Parse params file ###################################
+
+open (PARAMS, 'protomap.params');
+@params = <PARAMS>;
+close PARAMS;
+
+for ($i = 0; $i < scalar @params; ++$i) {
+    if ($params[$i] =~ /^\#+\s*Options/) {
+	++$i;
+	while ($params[$i] !~ /^\#/) {
+	    if ($params[$i] !~ /^\s/) {
+		@curoption = split(/\s+/,$params[$i]);
+		$option{$curoption[0]} = $curoption[1];
+	    }
+	    ++$i;
+	}
+    }
+    if ($params[$i] =~ /^\#+\s*Control/) {
+	++$i;
+	while ($params[$i] !~ /^\#/) {
+	    if ($params[$i] !~ /^\s+/) {
+		$params[$i] =~ s/\s+//g;
+		chomp $params[$i];
+		die "\n\nERROR - cannot find dtaselect.html at $params[$i] - aborting!\n\n" unless (-e "$params[$i]" . "DTASelect.html");
+		push (@infiles, $params[$i]);
+	    }
+	    ++$i;
+	}
+    }
+    if ($params[$i] =~ /^\#+\s*Experiment/) {
+	++$i;
+	while (($params[$i] !~ /^\#/) && ($i < scalar @params)) {
+	    if ($params[$i] !~ /^\s+/) {
+		$params[$i] =~ s/\s+//g;
+		chomp $params[$i];
+		die "\n\nERROR - cannot find dtaselect.html at $params[$i] - aborting!\n\n" unless (-e "$params[$i]" . "DTASelect.html");
+		push (@infiles, $params[$i]);
+	    }
+	    ++$i;
+	}
+    }
+}
+
+$n = $option{"n"};
+$numbands = $option{"numbands"};
+$prunesinglets = $option{"remove-singlets"};         #this option requires at least 2 _distinct_ peptides be present per band per condition, across all replicates
+$unique_only = $option{"uniqueonly"};
+$dbfile = $option{"database"};
+$excludestring = $option{"exclude"};
+$greedy = $option{"greedy-matching"};
+$keepmod = $option{"keepmods"};
+
+########################################################################
+
+$numconds = 2;
+
+print "\nPROTOMAP v1.98 (c)2008 Gabe Simon\n";
+print "Number of replicates: $n\n";
+print "Number of bands per replicate: $numbands\n";
+print "Singlet-pruning: ";
+print "ON\n" if ($prunesinglets == 1);
+print "OFF\n" if ($prunesinglets == 0);
+print "Greedy-matching: ";
+print "enabled\n" if ($greedy == 1);
+print "disabled\n" if ($greedy != 1);
+print "Unique-only: ";
+print "enabled\n" if ($unique_only == 1);
+print "disabled\n" if ($unique_only != 1);
+print "Excluding proteins that match: $excludestring\n" if ($excludestring ne "");
+
+$excludestring = "--------------------------------------------------------------" if ($excludestring eq "");
+
+$outputfile = "dtpma.txt";
+if ($unique_only == 0) {
+    print "\n\nextracting ALL peptides...\n\n";
+} else {
+    print "\n\nextracting unique peptides...\n\n";
+}
+
+system "mkdir DTAs";
+
+open (OUTCVG, '>alldata.pmap') or die "\nCannot open alldata.pmap for output!\n";
+
+#--- open the output files
+open(OUTPUT, ">$outputfile") or die "Cannot open file \"$outputfile\" to write to!\n\n";
+open(OUTPUTPRO, ">dtpma_p.txt") or die "Cannot open file dtpma_p.txt to write to!\n\n";
+
+die "\n\tERROR: number of directories does not make sense for n=$n and $numbands bands!\n" if (scalar @infiles != ($n * $numbands * $numconds));
+
+
+
+print OUTPUT "Peptide\tAccession number\tDescription\tMol. Weight\t";  #header to the IPI number column
+print OUTPUTPRO "Accession number\tDescription\tMol. Weight\t";
+
+
+my $cvgnames = "";
+#--- this loop extracts IPI numbers, protein names, and spectral counts from dtaselect-filter.txt files specified in dtarray.params and adds them to the correct row of %curry or, if the IPI number doesn't exist in %curry it adds it to %curry and fills in all previous columns with 0s
+################################################################################
+
+for ($filenum = 0; $filenum < scalar @infiles; $filenum++){
+
+#    print OUTPUT $nameholder[$filenum] . chr(9);        #print the header to each column (names specified in dtarray.params)
+    print OUTPUT $infiles[$filenum] . chr(9);        #print the header to each column (names specified in dtarray.params)
+    $cvgnames = $cvgnames . $infiles[$filenum] . chr(9);
+#    print OUTPUTPRO $nameholder[$filenum] . chr(9);
+    print OUTPUTPRO $infiles[$filenum] . chr(9);
+
+	$curdirname = $infiles[$filenum];
+	$curdirname =~ s/\//_/g;
+	chop $curdirname;
+	$dircommand = "cp $infiles[$filenum]" . "DTASelect.html DTAs\/$curdirname\.html";
+#	print "$dircommand\n";
+	system ($dircommand);
+
+    print 'adding ' .  $infiles[$filenum] . '... ' . "\n";   #a little visible output so you know its working...
+    open (TEXT, $infiles[$filenum] .  'DTASelect-filter.txt') or die "Can't open " . $infiles[$filenum] . "Dtaselect-filter.txt!\n";  #open a dtaselect-filter.txt file for extraction
+    open (COVERG, $infiles[$filenum] . 'coverg.txt') or die "Can't open " . $infiles[$filenum] . "coverg.txt!\n";
+
+    @txtbin = <TEXT>;                                           #and load it into @txtbin
+    close TEXT;
+    my %covergs = ();
+
+
+### load covergs into %covergs sorted by IPI number######
+
+    @covergbin = <COVERG>;
+    close(COVERG);
+    for ($i = 0; $i < scalar @covergbin; ++$i) {
+	@curgline = split(/\t/,$covergbin[$i]);
+	$curgline[0] =~ /^>(\S+)/;  #get accession number
+	$curgipi = $1;
+	$curgipi = substr($curgipi,0,21) if (length($curgipi) > 21);
+#	print "curgipi:\t$curgipi\n"; ### trace
+	chomp($curgipi);
+	chomp($curgline[1]);
+	$covergs{$curgipi} = $curgline[1];
+    }
+
+########################################################
+    $attheend = 0;
+    $atthebeginning = 0;
+
+    for ($position = 0; $position < scalar @txtbin; ++$position){       #go through dtaselect-filter.txt file line-by-line
+
+	if (($txtbin[$position] =~ /%/) && ($txtbin[$position] !~ /^Unique\t/)) {     #find lines containing IPI identifiers
+
+	    @curipiholder = (); 
+
+	    $txtbin[$position] =~ /(\S+)/;
+	    $currentipi = $1;
+#	    $currentipi = substr($curline[0],0,21) if (length($currentipi) > 21);
+	    $currentipi = substr($currentipi,0,21) if (length($currentipi) > 21);
+
+	    push (@curipiholder, $currentipi);
+
+	    $txtbin[$position] =~ m/(\d+)\t\d+\.\d+\tU\t(.*)$/;
+	    $curname = $2 . chr(9) . $1;                                   #get description + mol weight
+	    $curname =~ s/Gene_Symbol=//g;
+	    $curname =~ s/Tax_Id=\d+//g;
+
+	    while ($txtbin[$position] =~ /%/) {     #skip additional lines containing redundant accession numbers etc
+		++$position;
+		$tempipi = "";
+		if (($txtbin[$position] =~ /%/) && ($txtbin[$position] !~ /^Unique\t/)) {
+		    $tempipi = $txtbin[$position];
+		    $tempipi = substr($tempipi,0,21) if (length($tempipi) > 21);
+		    push (@curipiholder, $tempipi) if ($greedy == 1);
+		}
+	    }
+
+	    $currentsc = 0;
+	    until (($txtbin[$position] =~ /%/) || ($txtbin[$position] =~ /^\tProteins/)) {    #loop until end of entry (or ~EOF) is reached
+		    
+		if (($txtbin[$position] =~ /^\*\t/) || ($unique_only == 0)) {                                                 #only take unique peptides if unique_only = 1
+		    $txtbin[$position] =~ m/(\d+)\t(\D\.\D+\.\D)/;                                   #extract spectral counts ($1) and peptide sequence ($2)
+		    $curpeptide = $2;
+		    $cursc = $1;
+		    $curpeptide =~ s/\*//g unless ($keepmod == 1); #remove diffmod symbols
+		    $currentsc = $currentsc + $cursc;      #spectral counts for whole protein
+		    ++$position;
+
+
+		    foreach $currentipi (@curipiholder) {
+			
+			$curipi = $curpeptide . chr(9) . $currentipi . chr(9) . $curname;            #curipi actually contains peptide/ipi&desc/mw
+			$gnamer{$curipi} = $currentipi . chr(9) . $curname;                          #holds descriptions for peptides
+			$protname = $currentipi . chr(9) . $curname;
+			$pnamer{$currentipi} = $protname;                                            #holds descriptions for proteins
+
+			if (defined $curry{$curipi}){                                         #if the peptide already exists add the $cursc to the appropriate column
+			    $curry{$curipi}[$filenum] = $curry{$curipi}[$filenum] + $cursc;
+			} else {                                                              #if not, add the peptide to %curry and fill in all previous columns with zeros
+			    push (@ipiholder, $curipi);                                       #add the [pepseq/ipi/mw] to the @ipiholder array which contains all peptides from all files
+			    push (@{$pephash{$currentipi}}, $curipi);                         #pephash holds the identifiers of all peptides for that protein ---------
+			    for ($j = 0; $j < $filenum; ++$j){  #here's where the zeros are added
+				$curry{$curipi}[$j] = 0;
+			    }
+			    $curry{$curipi}[$filenum] = $cursc;         #after the zeros have been added add the spectral counts to the final (current) column
+			}
+		    }  #***foreach
+		} else{           #skip peptide if not unique if unique_only = 1
+		    ++$position;
+		}
+	    }
+	    --$position; 
+	    
+	    foreach $currentipi (@curipiholder) {
+		if (defined $curryprot{$currentipi}){                          #populate %curryprot and %corrycov with proteins/scs and proteins/coverages, respectively
+		    $curryprot{$currentipi}[$filenum] = $currentsc;
+		    $currycov{$currentipi}[$filenum] = $covergs{$currentipi};  #add coverage
+		} else {
+		    push (@protipiholder, $currentipi);
+		    for ($j = 0; $j < $filenum; ++$j) {
+			$curryprot{$currentipi}[$j] = 0;  #add zeros to unnocupied cells
+		    }
+		    $curryprot{$currentipi}[$filenum] = $currentsc;
+		    $currycov{$currentipi}[$filenum] = $covergs{$currentipi};
+		}
+	    }
+	}
+    }
+
+    for ($k = 0; $k< scalar @ipiholder; $k++){          #cycle through all peptides and add a zero to the new column if it didn't contain any spectral counts of that peptide [remember ipiholder contains peptides/ipi&desc/mw]
+	if (defined @{$curry{$ipiholder[$k]}}[$filenum]){  #remember - @ipiholder holds $curipis which are actually (pepseq-ipinum-mw)s
+	} else {
+	    push (@{@curry{$ipiholder[$k]}}, 0);
+	}
+    }
+
+    for ($k = 0; $k< scalar @protipiholder; $k++){          #cycle through all proteins and add a zero to the new band if it didn't contain any spectral counts of that IPI number
+	if (defined ${$curryprot{$protipiholder[$k]}}[$filenum]){        #protipiholder is just normal IPI numbers
+	} else {
+	    push (@{@curryprot{$protipiholder[$k]}}, 0);
+	}
+    }
+} 
+##################end of filenum loop#############################################################################################
+close TEXT;         #close current dtaselect-filter.txt file
+
+
+###--- singlet-pruning ---#####################################
+my ($dummycounter, $pepskilled) = (0,0);
+if ($prunesinglets == 1) {
+    foreach $protein (@protipiholder) {             #this loop looks at each protein and cycles through all $numbands bands and identifies bands that contain only a single unique peptide across all replicates and deletes that peptide from %curry, removes the appropriate number of spectral counts from %curryprot, and erases the sequence coverage coming from that protein
+	++$dummycounter;
+	print "\nSinglet-pruning protein no. $dummycounter: $protein";
+	for ($p = 0; $p < $numbands; ++$p) {
+	    %ctrlbandpeps = ();              #these hashes hold the distinct peptides from each band so the number of hash-keys represents the number of distinct peptides
+	    %expbandpeps = ();
+	    for ($q = 0; $q < $n; ++$q) { 
+		$ctrlbandno = $p+($numbands*$q);
+		$expbandno = $p+($numbands*$q) + ($n * $numbands);
+		foreach (@{$pephash{$protein}}) {    #add unique peptides to hashes
+		    $ctrlbandpeps{$_} = 1 if ($curry{$_}[$ctrlbandno] > 0);
+		    $expbandpeps{$_} = 1 if ($curry{$_}[$expbandno] > 0);
+		}
+	    }
+
+  ###--- kill band/condition-unique peptides
+	    if (scalar (keys %ctrlbandpeps) == 1) {   #if there's only one unique peptide in the band/condition
+		foreach $peptide (keys %ctrlbandpeps) {  #this should only iterate once (since there should only be one peptide in the hash)
+		    ++$pepskilled;
+		    @killbandholder = ();                         #this keeps track of which bands contain singletons so their sequence-coverage can be erased later
+		    for ($q = 0; $q < $n; ++$q) { 
+			$ctrlbandno = $p+($numbands*$q);          
+			if ($curry{$peptide}[$ctrlbandno] > 0) {
+			    push (@killbandholder, $ctrlbandno);  #add singlet-containing band to @killbandholder
+			    $curry{$peptide}[$ctrlbandno] = 0;    #remove spectral counts from %curry [peptide array]
+			    $curryprot{$protein}[$ctrlbandno] = 0;   #delete spectral counts from protein array (curryprot -> dtpma_p.txt)
+			}
+		    }
+		    $currycov{$protein}[$_] = 0 foreach (@killbandholder);                  #erase sequence-coverage for the killed band
+		}
+	    }
+
+	    if (scalar (keys %expbandpeps) == 1) {
+		foreach $peptide (keys %expbandpeps) {  #this should only iterate once
+		    ++$pepskilled;
+		    @killbandholder = ();
+		    for ($q = 0; $q < $n; ++$q) { 
+			$expbandno = $p+($numbands*$q) + ($n * $numbands);
+			if ($curry{$peptide}[$expbandno] > 0) {
+			    push (@killbandholder, $expbandno);
+			    $curry{$peptide}[$expbandno] = 0;
+			    $curryprot{$protein}[$expbandno] = 0;
+			}
+		    }
+		    $currycov{$protein}[$_] = 0 foreach (@killbandholder);                  
+		}
+	    }
+  ###---
+	}
+    }
+}
+
+foreach $peptide (keys %curry) {  #---xxxxxx
+    $cursum = 0;
+#    print scalar @{$curry{$peptide}} . " ";
+    foreach (@{$curry{$peptide}}) {
+#	print "$_ ";
+	$cursum += $_;
+    }
+    if ($cursum == 0) {
+	++$killedpeptides;
+	delete($curry{$peptide});
+    }
+    if (($peptide =~ /Reverse_/) & ($cursum > 0)) {
+	push (@fp, $peptide);
+	$fpsc += $cursum;
+    } else {
+	$tpsc += $cursum;
+    }
+}
+
+
+###--- end singlet-pruning loop ---################################
+
+
+print "\n\nFinished removing singlet-peptides! ($pepskilled spectral counts removed)";	     
+print " [$killedpeptides peptides completely removed]\n";
+print "\nWriting output to dtpma.txt and dtpma_p.txt... (this may take a few minutes)\n";
+
+print OUTPUT "\n";
+print OUTPUTPRO "\n";
+
+    #print the data in %curry to DTPMA.TXT    [remember ipiholder holds pepseqs/ipis/mws]
+$counter = 0;
+$tolkeys = scalar (keys %curry);
+print "$counter of $tolkeys\n";# if ($counter % 1000 == 0);
+foreach $curipi (keys %curry) {
+    ++$counter;
+    print "$counter of $tolkeys\n" if ($counter % 1000 == 0);
+#    if (exists($curry{$curipi})) {
+	print OUTPUT $curipi . chr(9);
+	foreach $cursc (@{@curry{$curipi}}){
+	    print OUTPUT $cursc . chr(9);
+	}
+	print OUTPUT "\n";
+#    }
+}
+close OUTPUT;
+print "\ndtpma.txt completed.";
+
+foreach $protein (@protipiholder) {      #counts total spectral counts per protein across all replicates
+    for ($m = 0; $m < scalar @infiles; ++$m) {
+	$scsums{$protein} += $curryprot{$protein}[$m];
+    }
+}
+print "\nspectral counts counted.";
+	     
+my %cbcvgs = ();    # ComBined CoVeraGeS
+
+foreach $currentipi (@protipiholder) {
+#    if (($scsums{$currentipi} > 0) && ($pnamer{$currentipi} !~ /$excludestring/i)) {
+	if (($scsums{$currentipi} > 0)) {
+
+	++$protcounter;
+	print OUTPUTPRO $pnamer{$currentipi} . chr(9);     #print protein names to DTPMA-P.TXT
+	foreach $currentsc (@{@curryprot{$currentipi}}){   #print spectral-count array to DTPMA-P.TXT
+	    print OUTPUTPRO $currentsc . chr(9);
+	}
+
+	my @tempcbcvg = ();   #this array holds coverages for each file(band) for the currentipi
+	for ($i = 0; $i < scalar @infiles; ++$i) {
+	    if (defined($currycov{$currentipi}[$i])){
+		print OUTPUTPRO $currycov{$currentipi}[$i] . chr(9);    #pritn coverages to DTPMA-P.TXT
+		$tempcvg = $currycov{$currentipi}[$i];
+	    } else {
+		print OUTPUTPRO "0" . chr(9);
+		$tempcvg = "0";
+	    }
+	    $tempcbcvg[$i] = $tempcvg;  
+	}
+
+	for ($j = 0; $j < $numbands; ++$j) {   #this loop combines all replicate coverages into a single coverage map for each band for each condition (reduces n=n to n=1 for each condition)
+	    for ($k = 0; $k<$n;++$k) {
+		$cbcvgs{$currentipi}[$j] = ($cbcvgs{$currentipi}[$j] | $tempcbcvg[$j + ($numbands*$k)]);  #the pipe is a ~binary OR function so 00101 | 10001 = 10101, this line is for the control samples
+		$cbcvgs{$currentipi}[$j + ($numbands)]= ($cbcvgs{$currentipi}[$j + $numbands] | $tempcbcvg[($numbands * $n) + $j + ($numbands*$k)]);      #this line is for the experiment samples
+	    }
+	}
+	print OUTPUTPRO "\n";
+    }
+}
+
+close(OUTPUTPRO);
+
+print "\ndtpma_p.txt completed.";
+
+#system ("del dtpma.txt") if ($prunesinglets == 1);   #comment out this line to save the dtpma.txt file
+
+#--- generate PMAP file (data file containing sequence coverage maps for each protein for online retrieval) ---#
+print "\nGenerating coverage-maps for all proteins/bands for PMAP file...\n";
+open (HTMLIN, $infiles[0] . 'DTASelect.html') or die "Can't open $infiles[0]DTASelect.html!\n";
+my @htmlholder = <HTMLIN>;
+close HTMLIN;
+#$dbfile = $htmlholder[31];      #this should be the location of the FASTA database
+#$dbfile =~ m/^(.*)<BR>/i;
+#$dbfile = $1;
+print "\nOpening " . $dbfile . "...\n";
+open (IPIDB, $dbfile) or die "Can't open $dbfile for input!\n";
+print "\nLoading $dbfile into memory...\n";
+@ipi = <IPIDB>;
+print " loaded! (" . scalar @ipi . " lines)\n";
+close IPIDB;
+print "\nJustifying IPI database...\n";
+my %jipi;                #justified FASTA database
+my $curseq = "";
+my $curhead = "";
+my $j = 0;
+
+for ($i = 0; $i < scalar @ipi; ++$i) {      #go through fasta database line-by-line
+    if ($ipi[$i] =~ /^>/) {                 #find FASTA entries
+	$curhead = $ipi[$i];                #store the header in $curhead
+	$ipi[$i] =~ /^>(\S+)/;
+	$curipi = $1;
+	$curipi = substr($curipi,0,21) if (length($curipi) > 21);
+#	print "$curipi\n";
+	$curseq = "";
+	$j = $i + 1;
+	while (($ipi[$j] !~ /^>/) && ($j + 1 < scalar @ipi)) {     #grab all sequence information following the header.  stop at the next header or ~EOF
+	    $ipi[$j] =~ s/\s//g;
+	    $curseq = $curseq . $ipi[$j];     #add each line of sequence info into $curseq
+	    if (length($curseq) > 30000) {    #this prevents timeouts/errors with enormous proteins like Titin
+		last;
+	    }
+	    ++$j;
+	}
+	$i = $j-1;
+	$jipi{$curipi} = [$curhead, $curseq];     
+    }
+}
+print "\ndone justifying!\nGenerating coverage maps:";
+$ipis = scalar @protipiholder;
+$ipicounter = 0;
+print OUTCVG "Protein_n" . $n . "_nb" . $numbands . "\tSequence\t" . $cvgnames . "\n";
+foreach $currentipi (@protipiholder) {
+     if (($scsums{$currentipi} > 0) && ($pnamer{$currentipi} !~ /$excludestring/i)) {
+#    if ($scsums{$currentipi} > 0) {
+	++$ipicounter;
+	$tempname = $pnamer{$currentipi};     #match descriptions to accession numbers
+	$tempname =~ s/\t/ - /g;
+	print OUTCVG $tempname . chr(9) . $jipi{$currentipi}[1] . chr(9);
+	foreach $currentsc (@{@curryprot{$currentipi}}){   #print spectral-count array to DTPMA-P.TXT
+	    print OUTCVG $currentsc . chr(9);
+	}
+
+
+
+	print "\n$ipicounter";
+#	print chr(27);
+
+	
+	for ($i = 0; $i < $numbands; ++$i) {     #this loop combines Control and Experimental coverage maps for each band into ~quaternary coverage maps (0, 1, 2, or 3 representing 00, 01, 10, or 11 respectively)
+	
+	    @tempcb1 = split(//, $cbcvgs{$currentipi}[$i]);                #explode coverages into tempcb# arrays
+	    @tempcb2 = split(//, $cbcvgs{$currentipi}[$i + $numbands]);    #tempcbd1 & 2 represent Control and Experimental
+	    @tempcbd = ();       #CBD - combined
+	    $cbdstring = "";
+	    for ($j = 0; $j < &max(scalar @tempcb1, scalar @tempcb2); ++$j) {    #cycle through binary coverages number-by-number and combine coverages as described above
+		@tempcbd[$j] = 0 if ((@tempcb1[$j] == 0) && (@tempcb2[$j] == 0));
+		@tempcbd[$j] = 1 if ((@tempcb1[$j] == 1) && (@tempcb2[$j] == 0));
+		@tempcbd[$j] = 2 if ((@tempcb1[$j] == 0) && (@tempcb2[$j] == 1));
+		@tempcbd[$j] = 3 if ((@tempcb1[$j] == 1) && (@tempcb2[$j] == 1));
+		$cbdstring = $cbdstring . @tempcbd[$j];  #add each number of the quaternary coverage to $cbdstring
+	    }
+	    print OUTCVG $cbdstring . chr(9);
+	}
+	print OUTCVG "\n";
+    } elsif ($pnamer{$currentipi} =~ /$excludestring/i) {
+	push (@excluded, $pnamer{$currentipi});
+    }
+    
+}
+close(OUTCVG);
+
+if (scalar @excluded > 0 ) {
+	print "\n\nExcluded:\n\n";
+	foreach (@excluded) {
+		print "\t" . substr($_,0,80) . "\n";
+	}
+}
+
+print "\ndone!  arrayed " . $protcounter . " proteins and " . scalar (keys %curry) . " peptides\n";
+print "peptide array saved to dtpma.txt \nprotein array saved to dtpma_p.txt\n";
+print "total true spectral counts:\t$tpsc\n";
+print "total false spectral counts:\t$fpsc\n";
+print "\n\nPROTOMAP data saved to alldata.pmap.  It is recomended that you change this filename to something more descriptive.\n\n";
+#print "The final step is to run peptographer.pl\n\n";
+#print "\tUsage:  peptographer.pl myfilename.pmap\n\n";
+
+#print "\n\nFalse peptides:\n";
+foreach (@fp) {
+#	print "$t$_\n";
+}
+#print "\n\n";
+
+
+
+
+sub max {        #a simple max function so List::Util isn't required
+    my $tempmax = 0;
+    foreach (@_) {
+	$tempmax = $_ if ($_ > $tempmax);
+    }
+    return $tempmax;
+}
+
+sub sum {
+    my $tempsum = 0;
+    foreach (@_) {
+	$tempsum += $_;
+    }
+    return $tempsum;
+}

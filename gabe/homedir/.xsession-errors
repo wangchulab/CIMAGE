@@ -1,0 +1,187 @@
+/etc/X11/xim: Checking whether an input method should be started.
+/etc/X11/xim: use GDM_LANG=en_US.UTF-8
+sourcing /etc/sysconfig/language to get the value of INPUT_METHOD
+INPUT_METHOD is not set or empty (no user selected input method).
+Trying to start a default input method for the locale en_US.UTF-8 ...
+There is no default input method for the current locale.
+Dummy input method "none" (do not use any fancy input method by default)
+Warning:          No symbols defined for <SYRQ> (keycode 92)
+Warning:          No symbols defined for <II5D> (keycode 93)
+Warning:          No symbols defined for <II65> (keycode 101)
+Warning:          No symbols defined for <BRK> (keycode 114)
+Warning:          No symbols defined for <FK13> (keycode 118)
+Warning:          No symbols defined for <FK14> (keycode 119)
+Warning:          No symbols defined for <FK15> (keycode 120)
+Warning:          No symbols defined for <FK16> (keycode 121)
+Warning:          No symbols defined for <FK17> (keycode 122)
+Warning:          No symbols defined for <KPDC> (keycode 123)
+Warning:          No symbols defined for <XFER> (keycode 129)
+Warning:          No symbols defined for <I02> (keycode 130)
+Warning:          No symbols defined for <NFER> (keycode 131)
+Warning:          No symbols defined for <I04> (keycode 132)
+Warning:          No symbols defined for <AE13> (keycode 133)
+Warning:          No symbols defined for <I06> (keycode 134)
+Warning:          No symbols defined for <I07> (keycode 135)
+Warning:          No symbols defined for <I08> (keycode 136)
+Warning:          No symbols defined for <I09> (keycode 137)
+Warning:          No symbols defined for <I0A> (keycode 138)
+Warning:          No symbols defined for <I0B> (keycode 139)
+Warning:          No symbols defined for <I0C> (keycode 140)
+Warning:          No symbols defined for <I0D> (keycode 141)
+Warning:          No symbols defined for <I0E> (keycode 142)
+Warning:          No symbols defined for <I0F> (keycode 143)
+Warning:          No symbols defined for <I11> (keycode 145)
+Warning:          No symbols defined for <I12> (keycode 146)
+Warning:          No symbols defined for <I13> (keycode 147)
+Warning:          No symbols defined for <I14> (keycode 148)
+Warning:          No symbols defined for <I15> (keycode 149)
+Warning:          No symbols defined for <I16> (keycode 150)
+Warning:          No symbols defined for <I17> (keycode 151)
+Warning:          No symbols defined for <I18> (keycode 152)
+Warning:          No symbols defined for <I1A> (keycode 154)
+Warning:          No symbols defined for <I1B> (keycode 155)
+Warning:          No symbols defined for <K59> (keycode 157)
+Warning:          No symbols defined for <I1E> (keycode 158)
+Warning:          No symbols defined for <I1F> (keycode 159)
+Warning:          No symbols defined for <I23> (keycode 163)
+Warning:          No symbols defined for <I25> (keycode 165)
+Warning:          No symbols defined for <I26> (keycode 166)
+Warning:          No symbols defined for <I27> (keycode 167)
+Warning:          No symbols defined for <I28> (keycode 168)
+Warning:          No symbols defined for <I29> (keycode 169)
+Warning:          No symbols defined for <K5A> (keycode 170)
+Warning:          No symbols defined for <I2B> (keycode 171)
+Warning:          No symbols defined for <I2C> (keycode 172)
+Warning:          No symbols defined for <I2D> (keycode 173)
+Warning:          No symbols defined for <I2F> (keycode 175)
+Warning:          No symbols defined for <I31> (keycode 177)
+Warning:          No symbols defined for <I33> (keycode 179)
+Warning:          No symbols defined for <I34> (keycode 180)
+Warning:          No symbols defined for <K5B> (keycode 181)
+Warning:          No symbols defined for <K5D> (keycode 182)
+Warning:          No symbols defined for <K5E> (keycode 183)
+Warning:          No symbols defined for <K5F> (keycode 184)
+Warning:          No symbols defined for <I39> (keycode 185)
+Warning:          No symbols defined for <I3A> (keycode 186)
+Warning:          No symbols defined for <I3B> (keycode 187)
+Warning:          No symbols defined for <I3C> (keycode 188)
+Warning:          No symbols defined for <K62> (keycode 189)
+Warning:          No symbols defined for <K63> (keycode 190)
+Warning:          No symbols defined for <K64> (keycode 191)
+Warning:          No symbols defined for <K65> (keycode 192)
+Warning:          No symbols defined for <K66> (keycode 193)
+Warning:          No symbols defined for <I42> (keycode 194)
+Warning:          No symbols defined for <I43> (keycode 195)
+Warning:          No symbols defined for <I44> (keycode 196)
+Warning:          No symbols defined for <I45> (keycode 197)
+Warning:          No symbols defined for <K67> (keycode 198)
+Warning:          No symbols defined for <K68> (keycode 199)
+Warning:          No symbols defined for <K69> (keycode 200)
+Warning:          No symbols defined for <K6A> (keycode 201)
+Warning:          No symbols defined for <I4A> (keycode 202)
+Warning:          No symbols defined for <K6B> (keycode 203)
+Warning:          No symbols defined for <K6C> (keycode 204)
+Warning:          No symbols defined for <K6D> (keycode 205)
+Warning:          No symbols defined for <K6E> (keycode 206)
+Warning:          No symbols defined for <K6F> (keycode 207)
+Warning:          No symbols defined for <HKTG> (keycode 208)
+Warning:          No symbols defined for <KANA> (keycode 209)
+Warning:          No symbols defined for <EISU> (keycode 210)
+Warning:          No symbols defined for <AB11> (keycode 211)
+Warning:          No symbols defined for <I54> (keycode 212)
+Warning:          No symbols defined for <I55> (keycode 213)
+Warning:          No symbols defined for <I5A> (keycode 218)
+Warning:          No symbols defined for <K74> (keycode 219)
+Warning:          No symbols defined for <K75> (keycode 220)
+Warning:          No symbols defined for <K76> (keycode 221)
+Warning:          No symbols defined for <I5E> (keycode 222)
+Warning:          No symbols defined for <I60> (keycode 224)
+Warning:          No symbols defined for <I61> (keycode 225)
+Warning:          No symbols defined for <I62> (keycode 226)
+Warning:          No symbols defined for <I63> (keycode 227)
+Warning:          No symbols defined for <I64> (keycode 228)
+Warning:          No symbols defined for <I6E> (keycode 238)
+Warning:          No symbols defined for <I6F> (keycode 239)
+Warning:          No symbols defined for <I70> (keycode 240)
+Warning:          No symbols defined for <I71> (keycode 241)
+Warning:          No symbols defined for <I72> (keycode 242)
+Warning:          No symbols defined for <I73> (keycode 243)
+Warning:          No symbols defined for <I74> (keycode 244)
+Warning:          No symbols defined for <I75> (keycode 245)
+Warning:          No symbols defined for <I76> (keycode 246)
+Warning:          No symbols defined for <I77> (keycode 247)
+Warning:          No symbols defined for <I78> (keycode 248)
+Warning:          No symbols defined for <I79> (keycode 249)
+Warning:          No symbols defined for <I7A> (keycode 250)
+Warning:          No symbols defined for <I7B> (keycode 251)
+Warning:          No symbols defined for <I7C> (keycode 252)
+Warning:          No symbols defined for <I7D> (keycode 253)
+Warning:          No symbols defined for <I7E> (keycode 254)
+Warning:          No symbols defined for <I7F> (keycode 255)
+Window manager warning: Failed to read saved session file /home/gabriels/.config/metacity/sessions/10e6d6172b7714f317124751748564248000000238740022.ms: Failed to open file '/home/gabriels/.config/metacity/sessions/10e6d6172b7714f317124751748564248000000238740022.ms': No such file or directory
+Failed to play sound: Invalid argument
+Initializing nautilus-share extension
+Initializing nautilus-dice extension
+
+(nautilus:24041): GLib-GObject-WARNING **: Two different plugins tried to register 'NautilusBurn'.
+
+(nautilus:24041): GLib-GObject-CRITICAL **: g_type_add_interface_dynamic: assertion `G_TYPE_IS_INSTANTIATABLE (instance_type)' failed
+
+(nautilus:24041): GLib-GObject-CRITICAL **: g_type_add_interface_dynamic: assertion `G_TYPE_IS_INSTANTIATABLE (instance_type)' failed
+Initializing nautilus-open-terminal extension
+
+** (nautilus:24041): WARNING **: Unable to add monitor: Not supported
+Nautilus-Share-Message: REFRESHING SHARES
+Nautilus-Share-Message: ------------------------------------------
+Nautilus-Share-Message: spawn arg "net"
+Nautilus-Share-Message: spawn arg "usershare"
+Nautilus-Share-Message: spawn arg "info"
+Nautilus-Share-Message: end of spawn args; SPAWNING
+
+Nautilus-Share-Message: returned from spawn: SUCCESS: 
+Nautilus-Share-Message: exit code 255
+Nautilus-Share-Message: ------------------------------------------
+Nautilus-Share-Message: Called "net usershare info" but it failed: 'net usershare' returned error 255: [2009/07/13 13:38:09,  0] param/params.c:OpenConfFile(531)
+  params.c:OpenConfFile() - Unable to open configuration file "/etc/samba/smb.conf":
+  	Permission denied
+net usershare: usershares are currently disabled
+
+gnome-session[23874]: WARNING: Application 'libcanberra-login-sound.desktop' failed to register before timeout
+gnome-session[23874]: WARNING: Could not launch application 'gnome-volume-manager.desktop': Unable to start application: Failed to execute child process "gnome-volume-manager" (No such file or directory)
+W: main.c: High-priority scheduling enabled in configuration but not allowed by policy.
+W: core-util.c: setpriority(): Permission denied
+W: ltdl-bind-now.c: Failed to find original dlopen loader.
+Failure: Module initalization failed
+[31;01merror: Unable to lock /home/gabriels/.hplip/hp-systray.lock. Is hp-systray already running?[0m
+
+[01mHP Linux Imaging and Printing System (ver. 2.8.7)[0m
+[01mSystem Tray Status Service ver. 0.1[0m
+
+Copyright (c) 2001-8 Hewlett-Packard Development Company, LP
+This software comes with ABSOLUTELY NO WARRANTY.
+This is free software, and you are welcome to distribute it
+under certain conditions. See COPYING file for more details.
+
+beagled will run in the background.
+Use beagle-status to check progress of beagled.
+For log files check /home/gabriels/.beagle/Log/current-Beagle.
+
+
+** (nm-applet:24119): WARNING **: <WARN>  applet_dbus_manager_start_service(): Could not acquire the NetworkManagerUserSettings service as it is already taken.  Return: 3
+
+Got request /opt/kde3/share/apps/SUSEgreeter/bg-head-800x58.png
+Got request /opt/kde3/share/apps/SUSEgreeter/40x32.png
+Got request /opt/kde3/share/apps/SUSEgreeter/cr64-suse.png
+Got request /opt/kde3/share/apps/SUSEgreeter/support.png
+Got request /opt/kde3/share/apps/SUSEgreeter/blueprint.png
+Got request /opt/kde3/share/apps/SUSEgreeter/button_cancel.png
+
+(gnome-keyring-daemon-wrapper:24019): EggSMClient-WARNING **: Received XSMP SaveYourself message in state save-yourself-done: client or server error
+Window manager warning: Fatal IO error 11 (Resource temporarily unavailable) on display ':1.0'.
+gnome-panel: Fatal IO error 11 (Resource temporarily unavailable) on X server :1.0.
+nautilus: Fatal IO error 11 (Resource temporarily unavailable) on X server :1.0.
+gpk-update-icon: Fatal IO error 11 (Resource temporarily unavailable) on X server :1.0.
+
+(gnome-panel:24038): GLib-GObject-CRITICAL **: g_object_run_dispose: assertion `G_IS_OBJECT (object)' failed
+
+(gnome-panel:24038): GLib-GObject-CRITICAL **: g_object_run_dispose: assertion `G_IS_OBJECT (object)' failed
