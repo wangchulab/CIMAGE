@@ -211,6 +211,21 @@ html.table <- cbind(new.char.matrix[,seq(1,cmass)], ##count to mass
                     )
 
 write.table(html.table,file="combined.txt", quote=F, sep="\t", row.names=F,na="0.00")
+png("combined_histogram.png")
+ratio <- out.num.matrix[z.order,]
+valid <- rep(T,nuniq)
+for ( i in 1:nset) {
+  valid <- valid & !is.na(ratio[,i])
+}
+ratio <- ratio[valid,seq(1,nset)]
+
+if ( is.vector(ratio) ) {
+  ratio <- matrix( ratio, byrow=T,ncol=1 )
+  colnames(ratio) <- colnames(out.num.matrix)[1]
+}
+hist(ratio,xlim=c(0,2),breaks=seq(min(ratio),max(ratio)+0.02,by=0.02),freq=F)
+lines(density(ratio),xlim=c(0,2))
+dev.off()
 
 png("combined.png")
 ratio <- out.num.matrix[z.order,]
@@ -224,6 +239,7 @@ if ( is.vector(ratio) ) {
   ratio <- matrix( ratio, byrow=T,ncol=1 )
   colnames(ratio) <- colnames(out.num.matrix)[1]
 }
+
 x<- seq(nrow(ratio),1)
 yl <- c(-4,4) #c(0, max(ratio))
 for ( i in 1:nset) {
