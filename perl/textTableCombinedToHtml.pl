@@ -57,6 +57,7 @@ print OUTFILE "<A HREF=\"$ARGV[0]\.txt\">Averaged Ratios Table(to Excel)</A><br>
 
 print OUTFILE "<A HREF=\"http://$hostname/cgi-bin/chuquest/batch_annotate.pl?dset=$cwd/$intable\">Gabe's Uniprot Batch Annotation</A><BR><BR>\n";
 print OUTFILE "<A HREF=\"$ARGV[0]\.png\">Ratio Plot</A><BR><BR>\n";
+print OUTFILE "<A HREF=\"$ARGV[0]\_histogram\.png\">Histogram</A><BR><BR>\n";
 if( -e "$ARGV[0].vennDiagram.png" ) {
     print OUTFILE "<A HREF=\"$ARGV[0]\.vennDiagram\.png\">Venn Diagram</A><BR><BR>\n";
 }
