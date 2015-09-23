@@ -52,7 +52,6 @@ ncross <- length(cross.vec)
 # handle switching of Heavy to light ratio, by default it is light vs heavy
 HL.ratios <- rep(FALSE,ncross)
 j <- 0
-# by default is to cacullate, L/H ratio, if putting the HL behind the file name, the HL.ratios will be true and will calculate the H/L ratio instead
 for ( arg in as.character(args) ) {
   j <- j+1
   cross.vec[j] <- sub("_HL$","",arg)
@@ -60,7 +59,7 @@ for ( arg in as.character(args) ) {
     HL.ratios[j] <- TRUE
   }
 }
-## find all matched mzXML input files in upper directory
+## find all matched input files in current directory
 if(TRUE){
 #if(FALSE){
 input.path <- getwd()
@@ -115,17 +114,15 @@ if ( ncross > 1 ) {
     layout.vec <- c(layout.vec,(row.layout.vec+i*3))
   }
 }
-#creat the layout matrix for picture drawing
 layout.matrix <- matrix(layout.vec,byrow=T,ncol=3)
 layout(layout.matrix)
-#oma is used to set the boundary of the picture, las is used to set the scale interval
 par(oma=c(0,0,5,0), las=0)
 
 dir.create(paste(output.path,"/PNG",sep=""))
 npages <- dim(cross.table)[1]
 message(paste("Total number of pages are ",npages,sep=""))
 #npages <- 11
-#for ( i in 133:133) { 
+#for ( i in 133:133) {
 for ( i in 1:npages) {
   i.folder <- floor((i-1)/500)
   i.page <- (i-1)%%500
@@ -171,7 +168,6 @@ for ( i in 1:npages) {
   ## scan number
   raw.scan.num <- cross.table[i,cross.vec]
   ms1.scan.rt <- ms1.scan.num <- exist.index <- which( raw.scan.num > 0 )
-  # do not know what it is for
   for ( k in 1:length(exist.index) ) {
     kk <- exist.index[k]
     raw.file <- paste( cross.vec[kk], "_", segment,".mzXML",sep="")
@@ -191,25 +187,22 @@ for ( i in 1:npages) {
     if ( j %in% exist.index ) {
       tag <- "*"
       tag.ms1.scan.num <- ms1.scan.num[match(j,exist.index)]
-	  #scantime of the ms1 scan in minite
       tag.rt <- xfile@scantime[tag.ms1.scan.num]/60
     } else {
       tag <- ""
       tag.ms1.scan.num <- NA
       tag.rt <- NA
     }
-    ##chromatogram bottom; EIC is the  chromatogram of ion (extracted ion chromatogram)
+    ##chromatogram bottom
     raw.ECI.light <- rawEIC(xfile, c(mz.light*(1-mz.ppm.cut), mz.light*(1+mz.ppm.cut)) )
     raw.ECI.heavy <- rawEIC(xfile, c(mz.heavy*(1-mz.ppm.cut), mz.heavy*(1+mz.ppm.cut)) )
     scan.time.range <- range(xfile@scantime)
-	#calculate the left boundary of the rt.window
     rt.min <- min(ms1.scan.rt)-rt.window.width
     if (rt.min > scan.time.range[2]) {
       rt.min <- scan.time.range[2] - 2*rt.window.width
     } else {
       rt.min <- max(rt.min, scan.time.range[1] )
     }
-	#calculate the right boundary of the rt.window
     rt.max <- max(ms1.scan.rt)+rt.window.width
     if (rt.max < scan.time.range[1] ) {
       rt.max <- scan.time.range[1] + 2*rt.window.width
@@ -223,44 +216,33 @@ for ( i in 1:npages) {
         rt.max <- rt.min + 2*rt.window.width
       }
     }
-	#xlimit: rt.time boundary of scantime
     xlimit <-c(which(xfile@scantime>rt.min)[1]-1, which(xfile@scantime>rt.max)[1] )
     if (is.na(xlimit[2]) ) xlimit[2] <- length(xfile@scantime)
-	#ylimit: intensity range of the ion
     ylimit <- range(c(raw.ECI.light[[2]][xlimit[1]:xlimit[2]], raw.ECI.heavy[[2]][xlimit[1]:xlimit[2]]))
     ylimit[1] <- 0.0
     ylimit[2] <- ylimit[2]*1.2
     local.xlimit <- xlimit <- c(rt.min,rt.max)/60
     raw.ECI.light.rt <- xfile@scantime[ raw.ECI.light[[1]] ] / 60
     raw.ECI.heavy.rt <- xfile@scantime[ raw.ECI.heavy[[1]] ] / 60
-	##title of the EIC profile 
+
     tt.main <- paste(tag, raw.file, "; Raw Scan:", as.character(raw.scan.num[j]),
                      "; NL:", formatC(ylimit[2], digits=2, format="e"))
-	#plot EIC picture
     plot(raw.ECI.light.rt, raw.ECI.light[[2]], type="l", col="red",xlab="Retention Time(min)",
          ylab="intensity", main=tt.main, xlim=xlimit,ylim=ylimit)
     lines(raw.ECI.heavy.rt, raw.ECI.heavy[[2]], col='blue', xlim=xlimit, ylim=ylimit)
-	##the vector containing all of the ms1 scan num and rt time of this peptide
     k.ms1.rt.v <- k.ms1.scan.v <- numeric(0)
     k.ms1.int.light.v <- k.ms1.int.heavy.v <- 0
     if ( !is.na(tag.rt) ) {
-	#the ms2 scan num list of this key(this peptide)
       all.ms2.scan <- as.integer( all.scan.table[(key==all.scan.table[,"key"]
                                                   &cross.vec[j]==all.scan.table[,"run"]),"scan"] )
-	#the heavy or light list of this key(this peptide)
       all.ms2.HL <- all.scan.table[(key==all.scan.table[,"key"]
                                     &cross.vec[j]==all.scan.table[,"run"]),"HL"]
-	#this for  loop is to point the intensity of the light or heavy peptide on the EIC picture
       for (k in 1:length(all.ms2.scan)) {
-		#ms1 scan num of this ms2 scan
         k.ms1.scan <- which(xfile@acquisitionNum > all.ms2.scan[k])[1]-1
-		#if this ms1 scan num does not exit
         if (is.na(k.ms1.scan)) {
           k.ms1.scan <- length(xfile@acquisitionNum)
         }
-		#rt time of the ms1 scan
         k.ms1.rt <- xfile@scantime[k.ms1.scan]/60
-		#
         if (all.ms2.HL[k] == "light") {
           points(k.ms1.rt, raw.ECI.light[[2]][k.ms1.scan], type='p',cex=0.5, pch=1)
           #k.ms1.int.light.v <- c(k.ms1.int.light.v, raw.ECI.light[[2]][k.ms1.scan])
@@ -291,10 +273,9 @@ for ( i in 1:npages) {
                         min(scan.time.range[2]/60, tag.rt+local.rt.window))
     }
     ## guess ratio of integrated peak area
-	##return light noise and heavy noise inthe first two position, and rt.min and rt.max pair for paired peaks behind 
     peaks <- findPairChromPeaks( raw.ECI.light.rt, raw.ECI.light[[2]], raw.ECI.heavy[[2]],
                                 xlimit, local.xlimit, sn )
-	
+
     noise.light <- peaks[1]
     lines(xlimit,c(noise.light, noise.light), col='red', type='l', lty=2)
     noise.heavy <- peaks[2]
