@@ -292,6 +292,7 @@ for ( i in 1:npages) {
     }
     ## guess ratio of integrated peak area
 	##return light noise and heavy noise inthe first two position, and rt.min and rt.max pair for paired peaks behind 
+    ##see commits for findPairchromPeaks in msisotope.R
     peaks <- findPairChromPeaks( raw.ECI.light.rt, raw.ECI.light[[2]], raw.ECI.heavy[[2]],
                                 xlimit, local.xlimit, sn )
 	
@@ -301,7 +302,7 @@ for ( i in 1:npages) {
     lines(xlimit,c(noise.heavy, noise.heavy), col='blue', type='l', lty=2)
     #delete the noise.light and heavy
     peaks <- peaks[-c(1,2)]
-    #valid peak num
+    #valid paired peak num
     n.peaks <- length(peaks)/2
 
     best.peak.scan.num <- best.mono.check <- best.r2 <- best.npoints <- best.light.int <- best.ratio <- 0.0
@@ -327,8 +328,10 @@ for ( i in 1:npages) {
         } else {
           peak.scan <- getScan(xfile, peak.scan.num, mzrange=c((mono.mass-2)/charge, mz.heavy+5) )
         }
+        #checkChargeAndMonoMass takes the predicted.dist and the peak.scan as the input, output the correlation factor between the predicted distribution and the experimental distribution
         mono.check <- checkChargeAndMonoMass( peak.scan, mono.mass, charge, mz.ppm.cut, predicted.dist)
         ## calculate ratio of integrated peak area
+        ## if we want the H/L ratio, we need to calculate the mono.check for heavy and compare it with the mono.check light, finall take the max one as the mono.check
         if (HL.ratios[j]) {
           ratio <- round((sum(heavy.yes)/sum(light.yes))*correction.factor,digits=2)
           peak.scan.num <- raw.ECI.heavy[[1]][yes][which.max(heavy.yes)]
@@ -357,14 +360,17 @@ for ( i in 1:npages) {
           next
         }
         ## extra information for better filtering
+        #n.ms2.peaks: the ms1 scan num in this rt window and having ms2 detected
         if (length(k.ms1.rt.v>0) & (sum((k.ms1.rt.v>=low & k.ms1.rt.v<=high))>0)) {
           n.ms2.peaks <- n.ms2.peaks + 1
         }
         x.lm <- lsfit( x=heavy.yes, y=light.yes,intercept=F )
         r2 <- round(as.numeric(ls.print(x.lm,print.it=F)$summary[1,2]),digits=2)
+        #if statement to determine wheter this peak is valid
         if (r2>r2.cutoff) {
           n.candidate.peaks <- n.candidate.peaks + 1
         }
+        #if this tag.rt is in this peak rt window, this is best fixed peak
         if ( !is.na(tag.rt) & tag.rt>=low & tag.rt<=high) {
           best.fixed <- T
         } else {
@@ -386,6 +392,7 @@ for ( i in 1:npages) {
           best.heavy.yes <- heavy.yes
           best.peak.scan.num <- peak.scan.num
         }
+        #if the best peak has already been fixed, break is for loop
         if (best.fixed) break
       }
     }
@@ -393,6 +400,7 @@ for ( i in 1:npages) {
 
     if (!best.fixed & !is.na(tag.rt) & (singleton.ratio>0) ) { # if no MS2 within a peak pair, try to identify a singleton peak with MS2
       singleton.ms2.match <- T # whether a singleton peak has a matching MS2, e.g., light for light or heavy for heavy
+	  #using HL.ratios to control the HL singleton or LH singleton
       if (HL.ratios[j]) {
         if (HL == "light") { singleton.ms2.match <- F } # for singleton heavy, if ms2 is from light, skip
         mono.single <- mono.mass.heavy
@@ -467,8 +475,9 @@ for ( i in 1:npages) {
       #     plot(0,0,xlab="",ylab="",main=paste("Empty ms1 spectrum") )
       #   }
     }
-
+	#either paired ratio or singleton ratio exist
     if ( best.r2 != 0 ) {
+	# 
       if (best.mono.check >= env.score.cutoff) {
         i.ratios[j] <- best.ratio
         light.int.v[j] <- best.light.int
@@ -477,9 +486,11 @@ for ( i in 1:npages) {
         lines(c(best.low,best.low),ylimit, col="green")
         lines(c(best.high,best.high),ylimit, col="green")
       }
+	  #for singleton plot
       if (best.xlm == 0) {
         plot(0,0,xlab="",ylab="",main=paste("Singleton Peak Found ! Np = ",npoints.single,sep=""),col.main="red" )
       } else {
+	  #for pair ratio plot
         plot(best.heavy.yes,best.light.yes,
              xlab="intensity.heavy", ylab="intensity.light",
              main=paste("X=",format(best.xlm,digits=4),"; R2=",format(best.r2,digits=3),
@@ -493,6 +504,7 @@ for ( i in 1:npages) {
       ##predicted.dist <- predicted.dist[1:20]
       ## upper limit: heavy + 20units ##
       cc <- seq(1,max(which(predicted.dist.heavy>0.01)))
+	  #get the merged predicted distribution for heavy and light
       if (HL.ratios[j]) {
         predicted.dist.merge <- (1/best.ratio)*predicted.dist[cc] + predicted.dist.heavy[cc]
       } else {
@@ -513,13 +525,13 @@ for ( i in 1:npages) {
       heavy.adjustments[which(heavy.index<0)] <- mz.unit.N15
       heavy.adjustments[which(heavy.index>=0)] <- mz.unit
       predicted.mz.heavy <- mono.mz.heavy + heavy.adjustments*heavy.index
-
+	# for the predicted distribution ,get those beyond 0.01 and the corresbonding predicted mz
       predicted.mz <- c(predicted.mz, predicted.mz.heavy)
 
       predicted.dist.merge <- c(predicted.dist.local,predicted.dist.heavy.local)
       n.max <- which.max(predicted.dist.merge)
       predicted.dist.merge <- predicted.dist.merge/predicted.dist.merge[n.max]
-
+		#get the observed intensit according to the predicted mz
       mz.max <- predicted.mz[n.max]
       mass.range <- c(mono.mz-2*mz.unit, mz.heavy+8*mz.unit)
       scan.data <- getScan(xfile, best.peak.scan.num, mzrange=mass.range)
@@ -543,8 +555,11 @@ for ( i in 1:npages) {
         scan.int <- scan.int/max(scan.int)
       }
       ylimit2 <- c(0,1.1)
+	  ##plot the predicted distribution versus observed distribution picture(right botoom)
+	  #plot the background ion intensity, scan.int is for the background
       plot(scan.mz, scan.int, type='h', xlab="m/z", ylab="intensity", xlim=mass.range, ylim=ylimit2, col="gray")
       par(new=T)
+	  #plot the observed distribution
       plot(predicted.mz, observed.int, type='h', xlab="m/z", ylab="intensity", xlim=mass.range, ylim=ylimit2, col="black")
       if ( mass.shift >0 ){
         light.n <- seq(1,length(light.index))##seq(1,(mass.shift))
@@ -552,6 +567,7 @@ for ( i in 1:npages) {
       } else {
         light.n <- heavy.n <- seq(1,3)
       }
+	  #plot the predicted distribution
       par(new=T)
       plot( predicted.mz[light.n], predicted.dist.merge[light.n], type='b',xlab="",ylab="",col="green",axes=F,xlim=mass.range,ylim=ylimit2)
       par(new=T)
