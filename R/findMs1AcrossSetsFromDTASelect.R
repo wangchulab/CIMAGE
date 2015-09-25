@@ -95,11 +95,12 @@ peaks.with.ms2.only <- as.logical(params[["peaks.with.ms2.only"]])
 singleton.ratio <- as.numeric(params[["singleton.ratio"]])
 ## column names for calculated ratios
 integrated.area.ratio <- paste("IR",cross.vec,sep=".")
-linear.regression.ratio <- paste("NP",cross.vec,sep=".")
+linear.regression.ratio <- paste("LR",cross.vec,sep = ".")
+peak.noise.information <- paste("NP",cross.vec,sep=".")
 linear.regression.R2 <- paste("R2",cross.vec,sep=".")
 light.integrated.area <- paste("INT",cross.vec,sep=".")
 column.names <- c("index","ipi", "description", "symbol", "sequence", "mass", "charge", "segment",
-                  integrated.area.ratio, light.integrated.area, linear.regression.ratio, linear.regression.R2, "entry", "link" )
+                  integrated.area.ratio, linear.regression.ratio , light.integrated.area, peak.noise.information, linear.regression.R2, "entry", "link" )
 out.df <- matrix(nrow=0, ncol=length(column.names))
 colnames(out.df) <- column.names
 
@@ -183,7 +184,7 @@ for ( i in 1:npages) {
     ms1.scan.rt[k] <- xfile@scantime[ms1.scan.num[k]]
   }
 
-  r2.v <- l.ratios <- light.int.v <- i.ratios <- rep(NA,ncross)
+  r2.v <- l.ratios <- NP.value <- light.int.v <- i.ratios <- rep(NA,ncross)
   for ( j in 1:ncross ) {
     raw.file <- paste( cross.vec[j], "_", segment,".mzXML",sep="")
     xfile <- mzXML.files[[raw.file]]
@@ -481,7 +482,7 @@ for ( i in 1:npages) {
       if (best.mono.check >= env.score.cutoff) {
         i.ratios[j] <- best.ratio
         light.int.v[j] <- best.light.int
-        ##l.ratios[j] <- best.xlm
+        l.ratios[j] <- best.xlm
         r2.v[j] <- best.r2
         lines(c(best.low,best.low),ylimit, col="green")
         lines(c(best.high,best.high),ylimit, col="green")
@@ -638,7 +639,7 @@ for ( i in 1:npages) {
       plot(0,0,xlab="",ylab="",main=paste("Empty ms1 spectrum") )
       #}
     }
-    l.ratios[j] <- paste(n.ms2.peaks, n.candidate.peaks,
+    NP.value[j] <- paste(n.ms2.peaks, n.candidate.peaks,
                          format(max(k.ms1.int.light.v), digits=1, scientific=T),
                          format(noise.light, digits=1, scientific=T),
                          format(max(k.ms1.int.heavy.v), digits=1, scientific=T),
@@ -657,7 +658,7 @@ for ( i in 1:npages) {
   lnk.j <- (i-1)%%500
   lnk.name <- paste('./PNG/', lnk.i, '/', out.filename.base,'.', lnk.i, '-', lnk.j,'.png',sep='')
   this.df <- c(i, ipi, description, symbol, peptide, round(mass,digits=4), charge, segment,
-               i.ratios, light.int.v, l.ratios, r2.v, entry.index,
+               i.ratios,l.ratios ,light.int.v, NP.value, r2.v, entry.index,
                paste('=HYPERLINK(\"./PNG/', lnk.i, '/', out.filename.base,'.', lnk.i, '_', lnk.j,'.png\")',sep=''))
   names(this.df) <- column.names
   out.df <- rbind(out.df, this.df)
