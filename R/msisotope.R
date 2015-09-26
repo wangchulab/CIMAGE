@@ -157,9 +157,6 @@ findPairChromPeaks <- function(rt, light.int, heavy.int, rt.range, local.rt.rang
         pair.range <- c(pair.range,low,high)
       }
     }
-	cat(paste(low,"\n",sep =""))
-	cat(paste(high,"\n",sep =""))
-	cat(pair.range)
   }
   return(pair.range)
 }
