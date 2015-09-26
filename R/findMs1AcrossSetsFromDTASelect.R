@@ -52,6 +52,7 @@ ncross <- length(cross.vec)
 # handle switching of Heavy to light ratio, by default it is light vs heavy
 HL.ratios <- rep(FALSE,ncross)
 j <- 0
+# by default is to cacullate, L/H ratio, if putting the HL behind the file name, the HL.ratios will be true and will calculate the H/L ratio instead
 for ( arg in as.character(args) ) {
   j <- j+1
   cross.vec[j] <- sub("_HL$","",arg)
@@ -59,7 +60,7 @@ for ( arg in as.character(args) ) {
     HL.ratios[j] <- TRUE
   }
 }
-## find all matched input files in current directory
+## find all matched mzXML input files in upper directory
 if(TRUE){
 #if(FALSE){
 input.path <- getwd()
@@ -94,11 +95,12 @@ peaks.with.ms2.only <- as.logical(params[["peaks.with.ms2.only"]])
 singleton.ratio <- as.numeric(params[["singleton.ratio"]])
 ## column names for calculated ratios
 integrated.area.ratio <- paste("IR",cross.vec,sep=".")
-linear.regression.ratio <- paste("NP",cross.vec,sep=".")
+linear.regression.ratio <- paste("LR",cross.vec,sep = ".")
+peak.noise.information <- paste("NP",cross.vec,sep=".")
 linear.regression.R2 <- paste("R2",cross.vec,sep=".")
 light.integrated.area <- paste("INT",cross.vec,sep=".")
 column.names <- c("index","ipi", "description", "symbol", "sequence", "mass", "charge", "segment",
-                  integrated.area.ratio, light.integrated.area, linear.regression.ratio, linear.regression.R2, "entry", "link" )
+                  integrated.area.ratio, linear.regression.ratio , light.integrated.area, peak.noise.information, linear.regression.R2, "entry", "link" )
 out.df <- matrix(nrow=0, ncol=length(column.names))
 colnames(out.df) <- column.names
 
@@ -114,15 +116,17 @@ if ( ncross > 1 ) {
     layout.vec <- c(layout.vec,(row.layout.vec+i*3))
   }
 }
+#creat the layout matrix for picture drawing
 layout.matrix <- matrix(layout.vec,byrow=T,ncol=3)
 layout(layout.matrix)
+#oma is used to set the boundary of the picture, las is used to set the scale interval
 par(oma=c(0,0,5,0), las=0)
 
 dir.create(paste(output.path,"/PNG",sep=""))
 npages <- dim(cross.table)[1]
 message(paste("Total number of pages are ",npages,sep=""))
 #npages <- 11
-#for ( i in 133:133) {
+#for ( i in 133:133) { 
 for ( i in 1:npages) {
   i.folder <- floor((i-1)/500)
   i.page <- (i-1)%%500
@@ -168,6 +172,7 @@ for ( i in 1:npages) {
   ## scan number
   raw.scan.num <- cross.table[i,cross.vec]
   ms1.scan.rt <- ms1.scan.num <- exist.index <- which( raw.scan.num > 0 )
+  # do not know what it is for
   for ( k in 1:length(exist.index) ) {
     kk <- exist.index[k]
     raw.file <- paste( cross.vec[kk], "_", segment,".mzXML",sep="")
@@ -179,7 +184,7 @@ for ( i in 1:npages) {
     ms1.scan.rt[k] <- xfile@scantime[ms1.scan.num[k]]
   }
 
-  r2.v <- l.ratios <- light.int.v <- i.ratios <- rep(NA,ncross)
+  r2.v <- l.ratios <- NP.value <- light.int.v <- i.ratios <- rep(NA,ncross)
   for ( j in 1:ncross ) {
     raw.file <- paste( cross.vec[j], "_", segment,".mzXML",sep="")
     xfile <- mzXML.files[[raw.file]]
@@ -187,22 +192,25 @@ for ( i in 1:npages) {
     if ( j %in% exist.index ) {
       tag <- "*"
       tag.ms1.scan.num <- ms1.scan.num[match(j,exist.index)]
+	  #scantime of the ms1 scan in minite
       tag.rt <- xfile@scantime[tag.ms1.scan.num]/60
     } else {
       tag <- ""
       tag.ms1.scan.num <- NA
       tag.rt <- NA
     }
-    ##chromatogram bottom
+    ##chromatogram bottom; EIC is the  chromatogram of ion (extracted ion chromatogram)
     raw.ECI.light <- rawEIC(xfile, c(mz.light*(1-mz.ppm.cut), mz.light*(1+mz.ppm.cut)) )
     raw.ECI.heavy <- rawEIC(xfile, c(mz.heavy*(1-mz.ppm.cut), mz.heavy*(1+mz.ppm.cut)) )
     scan.time.range <- range(xfile@scantime)
+	#calculate the left boundary of the rt.window
     rt.min <- min(ms1.scan.rt)-rt.window.width
     if (rt.min > scan.time.range[2]) {
       rt.min <- scan.time.range[2] - 2*rt.window.width
     } else {
       rt.min <- max(rt.min, scan.time.range[1] )
     }
+	#calculate the right boundary of the rt.window
     rt.max <- max(ms1.scan.rt)+rt.window.width
     if (rt.max < scan.time.range[1] ) {
       rt.max <- scan.time.range[1] + 2*rt.window.width
@@ -216,33 +224,44 @@ for ( i in 1:npages) {
         rt.max <- rt.min + 2*rt.window.width
       }
     }
+	#xlimit: rt.time boundary of scantime
     xlimit <-c(which(xfile@scantime>rt.min)[1]-1, which(xfile@scantime>rt.max)[1] )
     if (is.na(xlimit[2]) ) xlimit[2] <- length(xfile@scantime)
+	#ylimit: intensity range of the ion
     ylimit <- range(c(raw.ECI.light[[2]][xlimit[1]:xlimit[2]], raw.ECI.heavy[[2]][xlimit[1]:xlimit[2]]))
     ylimit[1] <- 0.0
     ylimit[2] <- ylimit[2]*1.2
     local.xlimit <- xlimit <- c(rt.min,rt.max)/60
     raw.ECI.light.rt <- xfile@scantime[ raw.ECI.light[[1]] ] / 60
     raw.ECI.heavy.rt <- xfile@scantime[ raw.ECI.heavy[[1]] ] / 60
-
+    #title of the EIC profile
     tt.main <- paste(tag, raw.file, "; Raw Scan:", as.character(raw.scan.num[j]),
                      "; NL:", formatC(ylimit[2], digits=2, format="e"))
+	#plot EIC picture
     plot(raw.ECI.light.rt, raw.ECI.light[[2]], type="l", col="red",xlab="Retention Time(min)",
          ylab="intensity", main=tt.main, xlim=xlimit,ylim=ylimit)
     lines(raw.ECI.heavy.rt, raw.ECI.heavy[[2]], col='blue', xlim=xlimit, ylim=ylimit)
+	##the vector containing all of the ms1 scan num and rt time of this peptide
     k.ms1.rt.v <- k.ms1.scan.v <- numeric(0)
     k.ms1.int.light.v <- k.ms1.int.heavy.v <- 0
     if ( !is.na(tag.rt) ) {
+	#the ms2 scan num list of this key(this peptide)
       all.ms2.scan <- as.integer( all.scan.table[(key==all.scan.table[,"key"]
                                                   &cross.vec[j]==all.scan.table[,"run"]),"scan"] )
+	#the heavy or light list of this key(this peptide)
       all.ms2.HL <- all.scan.table[(key==all.scan.table[,"key"]
                                     &cross.vec[j]==all.scan.table[,"run"]),"HL"]
+	#this for  loop is to point the intensity of the light or heavy peptide on the EIC picture
       for (k in 1:length(all.ms2.scan)) {
+		#ms1 scan num of this ms2 scan
         k.ms1.scan <- which(xfile@acquisitionNum > all.ms2.scan[k])[1]-1
+		#if this ms1 scan num does not exit
         if (is.na(k.ms1.scan)) {
           k.ms1.scan <- length(xfile@acquisitionNum)
         }
+		#rt time of the ms1 scan
         k.ms1.rt <- xfile@scantime[k.ms1.scan]/60
+		#
         if (all.ms2.HL[k] == "light") {
           points(k.ms1.rt, raw.ECI.light[[2]][k.ms1.scan], type='p',cex=0.5, pch=1)
           #k.ms1.int.light.v <- c(k.ms1.int.light.v, raw.ECI.light[[2]][k.ms1.scan])
@@ -273,6 +292,8 @@ for ( i in 1:npages) {
                         min(scan.time.range[2]/60, tag.rt+local.rt.window))
     }
     ## guess ratio of integrated peak area
+	##return light noise and heavy noise inthe first two position, and rt.min and rt.max pair for paired peaks behind 
+    ##see commits for findPairchromPeaks in msisotope.R
     peaks <- findPairChromPeaks( raw.ECI.light.rt, raw.ECI.light[[2]], raw.ECI.heavy[[2]],
                                 xlimit, local.xlimit, sn )
 
@@ -280,7 +301,9 @@ for ( i in 1:npages) {
     lines(xlimit,c(noise.light, noise.light), col='red', type='l', lty=2)
     noise.heavy <- peaks[2]
     lines(xlimit,c(noise.heavy, noise.heavy), col='blue', type='l', lty=2)
+    #delete the noise.light and heavy
     peaks <- peaks[-c(1,2)]
+    #valid paired peak num
     n.peaks <- length(peaks)/2
 
     best.peak.scan.num <- best.mono.check <- best.r2 <- best.npoints <- best.light.int <- best.ratio <- 0.0
@@ -306,8 +329,10 @@ for ( i in 1:npages) {
         } else {
           peak.scan <- getScan(xfile, peak.scan.num, mzrange=c((mono.mass-2)/charge, mz.heavy+5) )
         }
+        #checkChargeAndMonoMass takes the predicted.dist and the peak.scan as the input, output the correlation factor between the predicted distribution and the experimental distribution
         mono.check <- checkChargeAndMonoMass( peak.scan, mono.mass, charge, mz.ppm.cut, predicted.dist)
         ## calculate ratio of integrated peak area
+        ## if we want the H/L ratio, we need to calculate the mono.check for heavy and compare it with the mono.check light, finall take the max one as the mono.check
         if (HL.ratios[j]) {
           ratio <- round((sum(heavy.yes)/sum(light.yes))*correction.factor,digits=2)
           peak.scan.num <- raw.ECI.heavy[[1]][yes][which.max(heavy.yes)]
@@ -336,14 +361,17 @@ for ( i in 1:npages) {
           next
         }
         ## extra information for better filtering
+        #n.ms2.peaks: the ms1 scan num in this rt window and having ms2 detected
         if (length(k.ms1.rt.v>0) & (sum((k.ms1.rt.v>=low & k.ms1.rt.v<=high))>0)) {
           n.ms2.peaks <- n.ms2.peaks + 1
         }
         x.lm <- lsfit( x=heavy.yes, y=light.yes,intercept=F )
         r2 <- round(as.numeric(ls.print(x.lm,print.it=F)$summary[1,2]),digits=2)
+        #if statement to determine wheter this peak is valid
         if (r2>r2.cutoff) {
           n.candidate.peaks <- n.candidate.peaks + 1
         }
+        #if this tag.rt is in this peak rt window, this is best fixed peak
         if ( !is.na(tag.rt) & tag.rt>=low & tag.rt<=high) {
           best.fixed <- T
         } else {
@@ -365,6 +393,7 @@ for ( i in 1:npages) {
           best.heavy.yes <- heavy.yes
           best.peak.scan.num <- peak.scan.num
         }
+        #if the best peak has already been fixed, break is for loop
         if (best.fixed) break
       }
     }
@@ -372,6 +401,7 @@ for ( i in 1:npages) {
 
     if (!best.fixed & !is.na(tag.rt) & (singleton.ratio>0) ) { # if no MS2 within a peak pair, try to identify a singleton peak with MS2
       singleton.ms2.match <- T # whether a singleton peak has a matching MS2, e.g., light for light or heavy for heavy
+	  #using HL.ratios to control the HL singleton or LH singleton
       if (HL.ratios[j]) {
         if (HL == "light") { singleton.ms2.match <- F } # for singleton heavy, if ms2 is from light, skip
         mono.single <- mono.mass.heavy
@@ -446,19 +476,22 @@ for ( i in 1:npages) {
       #     plot(0,0,xlab="",ylab="",main=paste("Empty ms1 spectrum") )
       #   }
     }
-
+	#either paired ratio or singleton ratio exist
     if ( best.r2 != 0 ) {
+	# 
       if (best.mono.check >= env.score.cutoff) {
         i.ratios[j] <- best.ratio
         light.int.v[j] <- best.light.int
-        ##l.ratios[j] <- best.xlm
+        l.ratios[j] <- best.xlm
         r2.v[j] <- best.r2
         lines(c(best.low,best.low),ylimit, col="green")
         lines(c(best.high,best.high),ylimit, col="green")
       }
+	  #for singleton plot
       if (best.xlm == 0) {
         plot(0,0,xlab="",ylab="",main=paste("Singleton Peak Found ! Np = ",npoints.single,sep=""),col.main="red" )
       } else {
+	  #for pair ratio plot
         plot(best.heavy.yes,best.light.yes,
              xlab="intensity.heavy", ylab="intensity.light",
              main=paste("X=",format(best.xlm,digits=4),"; R2=",format(best.r2,digits=3),
@@ -472,6 +505,7 @@ for ( i in 1:npages) {
       ##predicted.dist <- predicted.dist[1:20]
       ## upper limit: heavy + 20units ##
       cc <- seq(1,max(which(predicted.dist.heavy>0.01)))
+	  #get the merged predicted distribution for heavy and light
       if (HL.ratios[j]) {
         predicted.dist.merge <- (1/best.ratio)*predicted.dist[cc] + predicted.dist.heavy[cc]
       } else {
@@ -492,13 +526,13 @@ for ( i in 1:npages) {
       heavy.adjustments[which(heavy.index<0)] <- mz.unit.N15
       heavy.adjustments[which(heavy.index>=0)] <- mz.unit
       predicted.mz.heavy <- mono.mz.heavy + heavy.adjustments*heavy.index
-
+	# for the predicted distribution ,get those beyond 0.01 and the corresbonding predicted mz
       predicted.mz <- c(predicted.mz, predicted.mz.heavy)
 
       predicted.dist.merge <- c(predicted.dist.local,predicted.dist.heavy.local)
       n.max <- which.max(predicted.dist.merge)
       predicted.dist.merge <- predicted.dist.merge/predicted.dist.merge[n.max]
-
+		#get the observed intensit according to the predicted mz
       mz.max <- predicted.mz[n.max]
       mass.range <- c(mono.mz-2*mz.unit, mz.heavy+8*mz.unit)
       scan.data <- getScan(xfile, best.peak.scan.num, mzrange=mass.range)
@@ -522,8 +556,11 @@ for ( i in 1:npages) {
         scan.int <- scan.int/max(scan.int)
       }
       ylimit2 <- c(0,1.1)
+	  ##plot the predicted distribution versus observed distribution picture(right botoom)
+	  #plot the background ion intensity, scan.int is for the background
       plot(scan.mz, scan.int, type='h', xlab="m/z", ylab="intensity", xlim=mass.range, ylim=ylimit2, col="gray")
       par(new=T)
+	  #plot the observed distribution
       plot(predicted.mz, observed.int, type='h', xlab="m/z", ylab="intensity", xlim=mass.range, ylim=ylimit2, col="black")
       if ( mass.shift >0 ){
         light.n <- seq(1,length(light.index))##seq(1,(mass.shift))
@@ -531,6 +568,7 @@ for ( i in 1:npages) {
       } else {
         light.n <- heavy.n <- seq(1,3)
       }
+	  #plot the predicted distribution
       par(new=T)
       plot( predicted.mz[light.n], predicted.dist.merge[light.n], type='b',xlab="",ylab="",col="green",axes=F,xlim=mass.range,ylim=ylimit2)
       par(new=T)
@@ -601,7 +639,7 @@ for ( i in 1:npages) {
       plot(0,0,xlab="",ylab="",main=paste("Empty ms1 spectrum") )
       #}
     }
-    l.ratios[j] <- paste(n.ms2.peaks, n.candidate.peaks,
+    NP.value[j] <- paste(n.ms2.peaks, n.candidate.peaks,
                          format(max(k.ms1.int.light.v), digits=1, scientific=T),
                          format(noise.light, digits=1, scientific=T),
                          format(max(k.ms1.int.heavy.v), digits=1, scientific=T),
@@ -620,7 +658,7 @@ for ( i in 1:npages) {
   lnk.j <- (i-1)%%500
   lnk.name <- paste('./PNG/', lnk.i, '/', out.filename.base,'.', lnk.i, '-', lnk.j,'.png',sep='')
   this.df <- c(i, ipi, description, symbol, peptide, round(mass,digits=4), charge, segment,
-               i.ratios, light.int.v, l.ratios, r2.v, entry.index,
+               i.ratios,l.ratios ,light.int.v, NP.value, r2.v, entry.index,
                paste('=HYPERLINK(\"./PNG/', lnk.i, '/', out.filename.base,'.', lnk.i, '_', lnk.j,'.png\")',sep=''))
   names(this.df) <- column.names
   out.df <- rbind(out.df, this.df)

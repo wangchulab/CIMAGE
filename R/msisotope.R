@@ -111,16 +111,20 @@ findChromPeaks <- function(spec, noise, sn=5, rtgap=0.2 ) {
 }
 
 findPairChromPeaks <- function(rt, light.int, heavy.int, rt.range, local.rt.range, sn=5) {
+  #mean of the difference of the ms1 rt 
   rtdiff <- mean( diff(rt) )
 
   m.light <- cbind(rt,light.int)
   dimnames(m.light)[[2]] <- c("rt","intensity")
   m.light.global <- m.light[rt>=rt.range[1]&rt<=rt.range[2],]
+  #noise of the light
   noise.light.global <- estimateChromPeakNoise(m.light.global[,"intensity"])
   m.light.local  <- m.light[rt>=local.rt.range[1]&rt<=local.rt.range[2],]
   noise.light.local <- estimateChromPeakNoise(m.light.local[,"intensity"])
   noise.light <- min( noise.light.global, noise.light.local )
+  #find all the peaks of the light
   peaks.light <- findChromPeaks(m.light.global, noise.light, sn, rtgap=0.2)
+  #peak num of light
   n.light <- dim(peaks.light)[[1]]
 
   m.heavy <- cbind(rt,heavy.int)
@@ -132,19 +136,22 @@ findPairChromPeaks <- function(rt, light.int, heavy.int, rt.range, local.rt.rang
   noise.heavy <- min( noise.heavy.global, noise.heavy.local )
   peaks.heavy <- findChromPeaks(m.heavy.global,noise.heavy,sn,rtgap=0.2)
   n.heavy <- dim(peaks.heavy)[[1]]
-
+	#noise of heavy and noise of light
   pair.range <- c(noise.light, noise.heavy)
   if ( n.heavy == 0 | n.light == 0 ) return(pair.range)
 
   for (i in 1:n.light) {
     rt.i <- peaks.light[i,"rt"]
     d.rt <- abs(rt.i-peaks.heavy[,"rt"])
+	#whichi.min returns the position of the minimum number
     j <- which.min(d.rt)
    # if (d.rt[j]>5*rtdiff) next
     rt.j <- peaks.heavy[j,"rt"]
+	#for the pair of light and heavy peak, if both of the top points are in the other one's rt.min and rt.max ragion,return the lowest and highest boundary of the pair peaks
     if ( rt.j >=peaks.light[i,"rt.min"] & rt.j <= peaks.light[i,"rt.max"]
         &  rt.i >=peaks.heavy[j,"rt.min"] & rt.i <= peaks.heavy[j,"rt.max"] ) {
       low <- min(peaks.light[i,"rt.min"],peaks.heavy[j,"rt.min"])
+	  
       high <- max(peaks.light[i,"rt.max"],peaks.heavy[j,"rt.max"])
       if ( low < high ) {
         pair.range <- c(pair.range,low,high)
