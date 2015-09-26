@@ -234,7 +234,7 @@ for ( i in 1:npages) {
     local.xlimit <- xlimit <- c(rt.min,rt.max)/60
     raw.ECI.light.rt <- xfile@scantime[ raw.ECI.light[[1]] ] / 60
     raw.ECI.heavy.rt <- xfile@scantime[ raw.ECI.heavy[[1]] ] / 60
-	##title of the EIC profile 
+    #title of the EIC profile
     tt.main <- paste(tag, raw.file, "; Raw Scan:", as.character(raw.scan.num[j]),
                      "; NL:", formatC(ylimit[2], digits=2, format="e"))
 	#plot EIC picture
@@ -296,7 +296,7 @@ for ( i in 1:npages) {
     ##see commits for findPairchromPeaks in msisotope.R
     peaks <- findPairChromPeaks( raw.ECI.light.rt, raw.ECI.light[[2]], raw.ECI.heavy[[2]],
                                 xlimit, local.xlimit, sn )
-	
+
     noise.light <- peaks[1]
     lines(xlimit,c(noise.light, noise.light), col='red', type='l', lty=2)
     noise.heavy <- peaks[2]
