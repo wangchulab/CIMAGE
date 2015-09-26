@@ -200,8 +200,9 @@ if (nuniq > count) {
   out.char.matrix <- out.char.matrix[-seq(count+1,nuniq),]
 }
 ## order by ratio from last set to first set
-z.order <- do.call("order", c(data.frame(out.num.matrix[,seq(nset,1)])),descreasing=descending)
+# z.order <- do.call("order", c(data.frame(out.num.matrix[,seq(nset,1)]))) #del descreasing=descending
 #z.order <- order(data.frame(out.num.matrix[,seq(nset,1)]),decreasing=descending)
+z.order <- order(data.frame(out.num.matrix[,seq(nset,1)]),decreasing=descending)
 ## draw venn diagrams of averaged ratios
 if (nset <=3 ) {
   library(limma)
@@ -267,6 +268,22 @@ html.table <- cbind(new.char.matrix[,seq(1,cmass)], ##count to mass
 write.table(html.table,file="combined.txt", quote=F, sep="\t", row.names=F,na="0.00")
 html.table2 <- html.table[html.table[,"index"]!=sp,]
 write.table(html.table2,file="combined_averaged_ratios.txt", quote=F, sep="\t", row.names=F,na="0.00")
+
+png("combined_histogram.png")
+ratio <- out.num.matrix[z.order,]
+valid <- rep(T,nuniq)
+for ( i in 1:nset) {
+  valid <- valid & !is.na(ratio[,i])
+}
+ratio <- ratio[valid,seq(1,nset)]
+
+if ( is.vector(ratio) ) {
+  ratio <- matrix( ratio, byrow=T,ncol=1 )
+  colnames(ratio) <- colnames(out.num.matrix)[1]
+}
+hist(ratio,xlim=c(0,2),breaks=seq(min(ratio),max(ratio)+0.02,by=0.02),freq=F)
+lines(density(ratio),xlim=c(0,2))
+dev.off()
 
 png("combined.png")
 ratio <- out.num.matrix[z.order,]
