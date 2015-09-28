@@ -55,19 +55,22 @@ tmp.names <- names(tmp.table)
 v1 <- which(substr(tmp.names,1,3) == "IR.")
 nset <- length(v1)
 vn1 <- paste("IR.set_",seq(1,nset),sep="")
-v2 <- which(substr(tmp.names,1,3) == "NP.")
-vn2 <- paste("NP.set_",seq(1,nset),sep="")
-v3 <- which(substr(tmp.names,1,3) == "R2.")
-vn3 <- paste("R2.set_",seq(1,nset),sep="")
-v4 <- which(substr(tmp.names,1,4) == "INT.")
-vn4 <- paste("INT.set_",seq(1,nset),sep="")
+v2 <- which(substr(tmp.names,1,3) == "LR.")
+vn2 <- paste("LR.set_",seq(1,nset),sep="")
+
+v3 <- which(substr(tmp.names,1,3) == "NP.")
+vn3 <- paste("NP.set_",seq(1,nset),sep="")
+v4 <- which(substr(tmp.names,1,3) == "R2.")
+vn4 <- paste("R2.set_",seq(1,nset),sep="")
+v5 <- which(substr(tmp.names,1,4) == "INT.")
+vn5 <- paste("INT.set_",seq(1,nset),sep="")
 
 nrun <- length(dirs)
 
 all.table <- NULL
 for (i in 1:nrun ) {
   table[[i]] <- read.table(paste(dirs[i],input.file,sep=""),header=T,sep="\t",quote="",comment.char="")
-  names(table[[i]])[c(v1,v2,v3,v4)] <- c(vn1,vn2,vn3,vn4)
+  names(table[[i]])[c(v1,v2,v3,v4,v5)] <- c(vn1,vn2,vn3,vn4,vn5)
   table[[i]][,"sequence"] <- as.character( table[[i]][,"sequence"] )
   table[[i]]$run<-i
   table[[i]]$uniq <-i
@@ -82,7 +85,7 @@ for (i in 1:nrun ) {
 
 ## set to NA if not passing r2.cutoff
 for( i in 1:length(vn1) ) {
-  invalid <- (all.table[[vn3[i]]]<r2.cutoff)
+  invalid <- (all.table[[vn4[i]]]<r2.cutoff)
   all.table[[vn1[i]]][invalid] <- NA
 }
 ## only consider entries with at least two valid ratios out of three concentrations
@@ -94,8 +97,8 @@ sp=" "
 count <- 0
 link.list <- as.list( levels(as.factor(all.table$uniq) ) )
 nuniq <- length(link.list)
-out.num.matrix <- matrix(0 ,nrow=nuniq,ncol=2*nset)
-colnames(out.num.matrix) <- c( paste("mr.set_",seq(1,nset),sep=""), paste("sd.set_",seq(1,nset),sep=""))
+out.num.matrix <- matrix(0 ,nrow=nuniq,ncol=3*nset)
+colnames(out.num.matrix) <- c( paste("mr.set_",seq(1,nset),sep=""), paste("mlr.set_",seq(1,nset),sep=""), paste("sd.set_",seq(1,nset),sep=""))
 char.names <- c("index","ipi", "description", "symbol", "sequence", "mass", "run", "charge", "segment", "link")
 out.char.matrix <- matrix(" ",nrow=nuniq,ncol=length(char.names))
 colnames(out.char.matrix) <- char.names
@@ -132,18 +135,23 @@ for (uniq in levels(as.factor(all.table$uniq) ) ) {
   }
   for ( k in 1:nset ) {
     kk <- k + nset
+	kkk <- k + 2*nset
     if (nrun >1) {
       median.per.run <- rep(0,length=nrun)
+	  medianlinear.per.run <- rep(0,length=nrun)
       for (dd in 1:nrun) {
         median.per.run[dd] <- round(median(sub.table[pass&(sub.table[,"run"]==dd),vn1[k]],na.rm=T),digits=2)
+		medianlinear.per.run[dd] <- round(median(sub.table[pass&(sub.table[,"run"]==dd),vn2[k]],na.rm=T),digits=2)
 #        if (median.per.run[dd] == 0) {median.per.run[dd] <- NA}
       }
       nrun.valid <- sum( !is.na(median.per.run))
       out.num.matrix[count,k]  <- round(mean(median.per.run,na.rm=T),digits=2)
-      out.num.matrix[count,kk] <- round(sd(median.per.run,na.rm=T)+0.01*(nrun.valid-1),digits=2) ## to differentiate multiple 15 ratios from single replicate
-    } else  {
+      out.num.matrix[count,kk] <- round(mean(medianlinear.per.run,na.rm=T),digits=2)
+      out.num.matrix[count,kkk] <- round(sd(median.per.run,na.rm=T)+0.01*(nrun.valid-1),digits=2) ## to differentiate multiple 15 ratios from single replicate
+	} else  {
       out.num.matrix[count,k]  <- round(median(sub.table[pass,vn1[k]],na.rm=T),digits=2)
-      out.num.matrix[count,kk] <- round(sd(sub.table[pass,vn1[k]],na.rm=T),digits=2)
+	  out.num.matrix[count,kk]  <- round(median(sub.table[pass,vn2[k]],na.rm=T),digits=2)
+      out.num.matrix[count,kkk] <- round(sd(sub.table[pass,vn1[k]],na.rm=T),digits=2)
     }
 
   }
@@ -211,7 +219,41 @@ html.table <- cbind(new.char.matrix[,seq(1,cmass)], ##count to mass
                     )
 
 write.table(html.table,file="combined.txt", quote=F, sep="\t", row.names=F,na="0.00")
-png("combined_histogram.png")
+png("combined_histogram_IR.png")
+ratio <- out.num.matrix[z.order,]
+valid <- rep(T,nuniq)
+for ( i in 1:nset) {
+  valid <- valid & !is.na(ratio[,i])
+}
+# linear regression ratio is at the 1st column
+ratio <- ratio[valid,seq(1,nset)]
+
+if ( is.vector(ratio) ) {
+  ratio <- matrix( ratio, byrow=T,ncol=1 )
+  colnames(ratio) <- colnames(out.num.matrix)[1]
+}
+hist(ratio,xlim=c(0,2),breaks=seq(min(ratio),max(ratio)+0.02,by=0.02),freq=F)
+lines(density(ratio),xlim=c(0,2))
+dev.off()
+
+png("combined_histogram_LR.png")
+ratio <- out.num.matrix[z.order,]
+valid <- rep(T,nuniq)
+for ( i in 1:nset) {
+  valid <- valid & !is.na(ratio[,i])
+}
+# linear regression ratio is at the 1+nest column
+ratio <- ratio[valid,seq(1+nset,nset)]
+
+if ( is.vector(ratio) ) {
+  ratio <- matrix( ratio, byrow=T,ncol=1 )
+  colnames(ratio) <- colnames(out.num.matrix)[1]
+}
+hist(ratio,xlim=c(0,2),breaks=seq(min(ratio),max(ratio)+0.02,by=0.02),freq=F)
+lines(density(ratio),xlim=c(0,2))
+dev.off()
+
+png("combined_IR.png")
 ratio <- out.num.matrix[z.order,]
 valid <- rep(T,nuniq)
 for ( i in 1:nset) {
@@ -223,11 +265,19 @@ if ( is.vector(ratio) ) {
   ratio <- matrix( ratio, byrow=T,ncol=1 )
   colnames(ratio) <- colnames(out.num.matrix)[1]
 }
-hist(ratio,xlim=c(0,2),breaks=seq(min(ratio),max(ratio)+0.02,by=0.02),freq=F)
-lines(density(ratio),xlim=c(0,2))
+
+x<- seq(nrow(ratio),1)
+yl <- c(-4,4) #c(0, max(ratio))
+for ( i in 1:nset) {
+  plot(x,log2(ratio[,i]),ylim=yl,xlab="Peptide Count",ylab="Observed Ratio(Log2)",col=palette()[i])
+  par(new=T)
+}
+par(new=F)
+legend(nrow(ratio)*0.75, yl[2], colnames(ratio), col=palette()[1:nset],pch=1,, text.col=palette()[1:nset])
+title("Observed Ratios")
 dev.off()
 
-png("combined.png")
+png("combined_LR.png")
 ratio <- out.num.matrix[z.order,]
 valid <- rep(T,nuniq)
 for ( i in 1:nset) {
