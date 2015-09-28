@@ -219,7 +219,41 @@ html.table <- cbind(new.char.matrix[,seq(1,cmass)], ##count to mass
                     )
 
 write.table(html.table,file="combined.txt", quote=F, sep="\t", row.names=F,na="0.00")
-png("combined_histogram.png")
+png("combined_histogram_IR.png")
+ratio <- out.num.matrix[z.order,]
+valid <- rep(T,nuniq)
+for ( i in 1:nset) {
+  valid <- valid & !is.na(ratio[,i])
+}
+# linear regression ratio is at the 1st column
+ratio <- ratio[valid,seq(1,nset)]
+
+if ( is.vector(ratio) ) {
+  ratio <- matrix( ratio, byrow=T,ncol=1 )
+  colnames(ratio) <- colnames(out.num.matrix)[1]
+}
+hist(ratio,xlim=c(0,2),breaks=seq(min(ratio),max(ratio)+0.02,by=0.02),freq=F)
+lines(density(ratio),xlim=c(0,2))
+dev.off()
+
+png("combined_histogram_LR.png")
+ratio <- out.num.matrix[z.order,]
+valid <- rep(T,nuniq)
+for ( i in 1:nset) {
+  valid <- valid & !is.na(ratio[,i])
+}
+# linear regression ratio is at the 1+nest column
+ratio <- ratio[valid,seq(1+nset,nset)]
+
+if ( is.vector(ratio) ) {
+  ratio <- matrix( ratio, byrow=T,ncol=1 )
+  colnames(ratio) <- colnames(out.num.matrix)[1]
+}
+hist(ratio,xlim=c(0,2),breaks=seq(min(ratio),max(ratio)+0.02,by=0.02),freq=F)
+lines(density(ratio),xlim=c(0,2))
+dev.off()
+
+png("combined_IR.png")
 ratio <- out.num.matrix[z.order,]
 valid <- rep(T,nuniq)
 for ( i in 1:nset) {
@@ -231,11 +265,19 @@ if ( is.vector(ratio) ) {
   ratio <- matrix( ratio, byrow=T,ncol=1 )
   colnames(ratio) <- colnames(out.num.matrix)[1]
 }
-hist(ratio,xlim=c(0,2),breaks=seq(min(ratio),max(ratio)+0.02,by=0.02),freq=F)
-lines(density(ratio),xlim=c(0,2))
+
+x<- seq(nrow(ratio),1)
+yl <- c(-4,4) #c(0, max(ratio))
+for ( i in 1:nset) {
+  plot(x,log2(ratio[,i]),ylim=yl,xlab="Peptide Count",ylab="Observed Ratio(Log2)",col=palette()[i])
+  par(new=T)
+}
+par(new=F)
+legend(nrow(ratio)*0.75, yl[2], colnames(ratio), col=palette()[1:nset],pch=1,, text.col=palette()[1:nset])
+title("Observed Ratios")
 dev.off()
 
-png("combined.png")
+png("combined_LR.png")
 ratio <- out.num.matrix[z.order,]
 valid <- rep(T,nuniq)
 for ( i in 1:nset) {
