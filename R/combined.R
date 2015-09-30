@@ -219,6 +219,7 @@ html.table <- cbind(new.char.matrix[,seq(1,cmass)], ##count to mass
                     )
 
 write.table(html.table,file="combined.txt", quote=F, sep="\t", row.names=F,na="0.00")
+
 png("combined_histogram_IR.png")
 ratio <- out.num.matrix[z.order,]
 valid <- rep(T,nuniq)
@@ -243,7 +244,7 @@ for ( i in 1:nset) {
   valid <- valid & !is.na(ratio[,i])
 }
 # linear regression ratio is at the 1+nest column
-ratio <- ratio[valid,seq(1+nset,nset)]
+ratio <- ratio[valid,seq(1+nset,nset+nset)]
 
 if ( is.vector(ratio) ) {
   ratio <- matrix( ratio, byrow=T,ncol=1 )
@@ -283,7 +284,7 @@ valid <- rep(T,nuniq)
 for ( i in 1:nset) {
   valid <- valid & !is.na(ratio[,i])
 }
-ratio <- ratio[valid,seq(1,nset)]
+ratio <- ratio[valid,seq(1+nset,nset+nset)]
 
 if ( is.vector(ratio) ) {
   ratio <- matrix( ratio, byrow=T,ncol=1 )
