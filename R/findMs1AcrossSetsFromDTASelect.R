@@ -342,7 +342,8 @@ for ( i in 1:npages) {
         } else {
           ratio <- round((sum(light.yes)/sum(heavy.yes))/correction.factor,digits=2)
         }
-        if( singleton.ratio > 0  & ratio > singleton.ratio ) next ## let singleton checker handle this case
+		#e.g. in L/H, whether L/H > singletong.ratio or L/H < singleton.ratio, let singleton checker handle this case
+        if( singleton.ratio > 0  & (ratio > singleton.ratio | ratio < 1/singleton.ratio )) next ## let singleton checker handle this case
         lines(c(low,low),ylimit/10, col="green")
         lines(c(high,high),ylimit/10, col="green")
         text(mean(c(low,high)),max(light.yes,heavy.yes)*1.2,
@@ -400,31 +401,49 @@ for ( i in 1:npages) {
 
 
     if (!best.fixed & !is.na(tag.rt) & (singleton.ratio>0) ) { # if no MS2 within a peak pair, try to identify a singleton peak with MS2
-      singleton.ms2.match <- T # whether a singleton peak has a matching MS2, e.g., light for light or heavy for heavy
+      singleton <- "L" # whether a singleton peak has a matching MS2, e.g., light for light or heavy for heavy
 	  #using HL.ratios to control the HL singleton or LH singleton
       if (HL.ratios[j]) {
-        if (HL == "light") { singleton.ms2.match <- F } # for singleton heavy, if ms2 is from light, skip
+	    singleton <- "H"
+        #if (HL == "light") { singleton.ms2.match <- F } # for singleton heavy, if ms2 is from light, skip
         mono.single <- mono.mass.heavy
         raw.ECI.rt.single <- raw.ECI.heavy.rt
         raw.ECI.single <- raw.ECI.heavy
-        raw.ECI.single.other <- raw.ECI.light
+		#calculate the ratio of the maximum heavy intensity and the light intensity ratio
         k.ms1.int.ratio <- max(k.ms1.int.heavy.v)/max(c(0.01,k.ms1.int.light.v))
+		#if the H/L ratio is small, calculate the L/H ratio to find the L/H singleton
+		if (k.ms1.int.ratio < 3) {
+			singleton <- "L"
+			mono.single <- mono.mass
+			raw.ECI.rt.single <- raw.ECI.light.rt
+			raw.ECI.single <- raw.ECI.light
+			raw.ECI.single.other <- raw.ECI.heavy
+			k.ms1.int.ratio <- 1/k.ms1.int.ratio
+		}
       } else {
-        if (HL == "heavy") { singleton.ms2.match <- F }
+        #if (HL == "heavy") { singleton.ms2.match <- F }
         mono.single <- mono.mass
         raw.ECI.rt.single <- raw.ECI.light.rt
         raw.ECI.single <- raw.ECI.light
         raw.ECI.single.other <- raw.ECI.heavy
         k.ms1.int.ratio <- max(k.ms1.int.light.v)/max(c(0.01,k.ms1.int.heavy.v))
+		if (k.ms1.int.ratio < 3) {
+			singleton <- "H"
+			mono.single <- mono.mass.heavy
+			raw.ECI.rt.single <- raw.ECI.heavy.rt
+			raw.ECI.single <- raw.ECI.heavy
+			raw.ECI.single.other <- raw.ECI.light
+			k.ms1.int.ratio <- 1/k.ms1.int.ratio
+		}
       }
       n.single.peaks <- 0
-      if (singleton.ms2.match) { # find singleton peaks only when a matching MS2 exists
-        single.peaks <- findSingleChromPeaks(raw.ECI.rt.single, raw.ECI.single[[2]],xlimit, local.xlimit, sn )
-        single.peaks <- single.peaks[-1]
-        n.single.peaks <- length(single.peaks)/2
-      }
+	  # find singleton peaks only when a matching MS2 exists
+      single.peaks <- findSingleChromPeaks(raw.ECI.rt.single, raw.ECI.single[[2]],xlimit, local.xlimit, sn )
+      single.peaks <- single.peaks[-1]
+      n.single.peaks <- length(single.peaks)/2
       n.singleton.peaks <- numeric(0)
-      if (n.single.peaks>0) {
+	  singleton.fixed <- F
+      if (n.single.peaks > 0) {
         for (ns in 1:n.single.peaks) {
           low.single <- single.peaks[2*ns-1]
           high.single <- single.peaks[2*ns]
@@ -443,32 +462,43 @@ for ( i in 1:npages) {
           lines(c(high.single,high.single),ylimit/2,col="green")
           real.singleton.ratio <- round(min(singleton.ratio, sum(int.yes.single)/max(1,sum(int.yes.single.other))), 2)
           text(mean(c(low.single,high.single)),max(int.yes.single)*1.2, labels=paste(round(real.singleton.ratio,2),round(mono.check.single,2),sep="/"))
-      #       ## did not pass env score filter
+          #did not pass env score filter
           #if (mono.check.single < env.score.cutoff) next
           npoints.single <- length(yes.single)
-                                        #       ## peak is too narrow with very few time points
+          ## peak is too narrow with very few time points
           if (npoints.single<minimum.peak.points) next
-      #       ##
           #i.ratios[j] <- singleton.ratio
           #r2.v[j] <- 1.0
-          best.mono.check <- mono.check.single
-          best.npoints <- npoints.single
-          best.r2 <- 1.0
-          best.ratio <- real.singleton.ratio ##min(singleton.ratio, sum(int.yes.single)/max(1,sum(int.yes.single.other)))
-          best.light.int <- sum(int.yes.single)
-          best.xlm <- 0
-          best.low <- low.single
-          best.high <- high.single
-          best.light.yes <- 0
-          best.heavy.yes <- 0
-          best.peak.scan.num <- peak.scan.num
+		  #if ( !is.na(tag.rt) & tag.rt>=low & tag.rt<=high) {
+			#singleton.fixed <- T
+		  #} else {
+			#singleton.fixed <- F
+		  #}
+		  #if ( best.fixed | (best.mono.check < 0.95 & mono.check >= best.mono.check) | ## better envelope score
+           # ( best.mono.check >=0.95 & mono.check >=0.95 & max(light.yes,heavy.yes)>max(best.light.yes) ) | ## envelope score equally better, choose a higher peak
+           # ( mono.check < env.score.cutoff & mono.check == best.mono.check & max(light.yes,heavy.yes) > max(best.light.yes) ) ## envelope score equally worse, choose a higher peak
+           # ) {
+			best.mono.check <- mono.check.single
+			best.npoints <- npoints.single
+			best.r2 <- 1.0
+			best.ratio <- real.singleton.ratio ##min(singleton.ratio, sum(int.yes.single)/max(1,sum(int.yes.single.other)))
+			best.light.int <- sum(int.yes.single)
+			best.xlm <- 0
+			best.low <- low.single
+			best.high <- high.single
+			best.light.yes <- 0
+			best.heavy.yes <- 0
+			best.peak.scan.num <- peak.scan.num
+			#}
 
 
-       #      plot(0,0,xlab="",ylab="",main=paste("Empty ms1 spectrum") )
+          #plot(0,0,xlab="",ylab="",main=paste("Empty ms1 spectrum") )
           n.singleton.peaks <- c(n.singleton.peaks,ns)
           n.ms2.peaks <- n.ms2.peaks + 1
           n.candidate.peaks <- n.candidate.peaks + 1
-          break
+		  
+          #if (singleton.fixed) 
+		  break
         }
       }
       #   if (length(n.singleton.peaks) == 0) {
@@ -489,7 +519,7 @@ for ( i in 1:npages) {
       }
 	  #for singleton plot
       if (best.xlm == 0) {
-        plot(0,0,xlab="",ylab="",main=paste("Singleton Peak Found ! Np = ",npoints.single,sep=""),col.main="red" )
+        plot(0,0,xlab="",ylab="",main=paste("Singleton Peak",singleton," Found ! Np = ",npoints.single,sep=""),col.main="red" )
       } else {
 	  #for pair ratio plot
         plot(best.heavy.yes,best.light.yes,
