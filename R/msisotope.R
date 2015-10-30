@@ -1,20 +1,25 @@
 isotope.dist <- function(elements.count, N15.enrichment=1.0) {
   elements <- c( "C", "H", "O", "N", "S", "P", "N15", "H2", "C13", "Se", "Cl","Br")
-  if ( length(elements.count) < length(elements) ) {
-    elements.count <- c( elements.count, rep(0, length(elements)-length(elements.count)))
+  elements.count.local <- rep(0, length(elements))
+  names(elements.count.local) <- elements
+  for ( e in names(elements.count)) {
+    elements.count.local[e] <- elements.count[e]
   }
+  #if ( length(elements.count) < length(elements) ) {
+  #  elements.count <- c( elements.count, rep(0, length(elements)-length(elements.count)))
+  #}
   heavy <- c(1.10, 0.015, 0.20, 0.37, 4.21, 0, 100, 100, 100, 49.16, 24.24, 49.31)/100
   names(heavy) <- elements
   heavy["N15"] <- N15.enrichment
 
   light <- 1.00 - heavy
   light["Se"] <- 0.2377 # Special for selenium
-  names(elements.count) <- elements
+#  names(elements.count) <- elements
   single.prob <- as.list( elements )
   names(single.prob) <- elements
   all.prob <- numeric(0)
   for ( e in elements ) {
-    count <- elements.count[e]
+    count <- elements.count.local[e]
     if (count == 0) next
     v <- seq(0,count)
     l <- light[e]
@@ -111,7 +116,7 @@ findChromPeaks <- function(spec, noise, sn=5, rtgap=0.2 ) {
 }
 
 findPairChromPeaks <- function(rt, light.int, heavy.int, rt.range, local.rt.range, sn=5) {
-  #mean of the difference of the ms1 rt 
+  #mean of the difference of the ms1 rt
   rtdiff <- mean( diff(rt) )
 
   m.light <- cbind(rt,light.int)
@@ -151,7 +156,7 @@ findPairChromPeaks <- function(rt, light.int, heavy.int, rt.range, local.rt.rang
     if ( rt.j >=peaks.light[i,"rt.min"] & rt.j <= peaks.light[i,"rt.max"]
         &  rt.i >=peaks.heavy[j,"rt.min"] & rt.i <= peaks.heavy[j,"rt.max"] ) {
       low <- min(peaks.light[i,"rt.min"],peaks.heavy[j,"rt.min"])
-	  
+
       high <- max(peaks.light[i,"rt.max"],peaks.heavy[j,"rt.max"])
       if ( low < high ) {
         pair.range <- c(pair.range,low,high)
