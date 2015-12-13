@@ -329,16 +329,21 @@ for ( i in 1:npages) {
         } else {
           peak.scan <- getScan(xfile, peak.scan.num, mzrange=c((mono.mass-2)/charge, mz.heavy+5) )
         }
-        #checkChargeAndMonoMass takes the predicted.dist and the peak.scan as the input, output the correlation factor between the predicted distribution and the experimental distribution
+        #checkChargeAndMonoMass takes the predicted.dist and the peak.scan as the input, 
+		#output the correlation factor between the predicted distribution and the experimental distribution
         mono.check <- checkChargeAndMonoMass( peak.scan, mono.mass, charge, mz.ppm.cut, predicted.dist)
+		peak.scan.num.heavy <- raw.ECI.heavy[[1]][yes][which.max(heavy.yes)]
+        peak.scan.heavy <- getScan(xfile, peak.scan.num.heavy, mzrange=c((mono.mass.heavy-2)/charge, mz.heavy+5) )
+		mono.check.heavy <- checkChargeAndMonoMass( peak.scan.heavy, mono.mass.heavy, charge, mz.ppm.cut, predicted.dist.heavy[(mass.shift+1):length(predicted.dist.heavy)])
+		mono.check <- max(mono.check, mono.check.heavy)
+		if (mono.check == mono.check.heavy) {
+		  peak.scan <- peak.scan.heavy
+		  peak.scan.num <- peak.scan.num.heavy
+		}
         ## calculate ratio of integrated peak area
         ## if we want the H/L ratio, we need to calculate the mono.check for heavy and compare it with the mono.check light, finall take the max one as the mono.check
         if (HL.ratios[j]) {
           ratio <- round((sum(heavy.yes)/sum(light.yes))*correction.factor,digits=2)
-          peak.scan.num <- raw.ECI.heavy[[1]][yes][which.max(heavy.yes)]
-          peak.scan <- getScan(xfile, peak.scan.num, mzrange=c((mono.mass.heavy-2)/charge, mz.heavy+5) )
-          mono.check.heavy <- checkChargeAndMonoMass( peak.scan, mono.mass.heavy, charge, mz.ppm.cut, predicted.dist.heavy[(mass.shift+1):length(predicted.dist.heavy)])
-          mono.check <- max(mono.check, mono.check.heavy)
         } else {
           ratio <- round((sum(light.yes)/sum(heavy.yes))/correction.factor,digits=2)
         }
