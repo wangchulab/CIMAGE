@@ -47,7 +47,9 @@ for line in open(argv[1]):
                 # print out tagged lines
                 for pep in pep_lines:
 					linesplit = pep.split("\t")
-					if linesplit[6] < linesplit[5]:
+					if float(linesplit[6]) < float(linesplit[5]) + 0.5 :
+						print float(linesplit[6])
+						print float(linesplit[5])
 						firsttab=pep.index("\t")+1
 						print 'cimagepep-'+tag, pep[firsttab:]
             # emtpy lists
