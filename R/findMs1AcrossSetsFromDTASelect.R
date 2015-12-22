@@ -306,7 +306,7 @@ for ( i in 1:npages) {
     #valid paired peak num
     n.peaks <- length(peaks)/2
 
-    best.peak.scan.num <- best.mono.check <- best.r2 <- best.npoints <- best.light.int <- best.ratio <- 0.0
+    best.yes.single <- best.peak.scan.num <- best.mono.check <- best.r2 <- best.npoints <- best.light.int <- best.ratio <- 0.0
     best.mono.check <- -0.1
     best.xlm <- best.light.yes <- best.heavy.yes <- best.low <- best.high <- c(0)
     best.fixed <- F
@@ -329,20 +329,26 @@ for ( i in 1:npages) {
         } else {
           peak.scan <- getScan(xfile, peak.scan.num, mzrange=c((mono.mass-2)/charge, mz.heavy+5) )
         }
-        #checkChargeAndMonoMass takes the predicted.dist and the peak.scan as the input, output the correlation factor between the predicted distribution and the experimental distribution
+        #checkChargeAndMonoMass takes the predicted.dist and the peak.scan as the input, 
+		#output the correlation factor between the predicted distribution and the experimental distribution
         mono.check <- checkChargeAndMonoMass( peak.scan, mono.mass, charge, mz.ppm.cut, predicted.dist)
+		peak.scan.num.heavy <- raw.ECI.heavy[[1]][yes][which.max(heavy.yes)]
+        peak.scan.heavy <- getScan(xfile, peak.scan.num.heavy, mzrange=c((mono.mass.heavy-2)/charge, mz.heavy+5) )
+		mono.check.heavy <- checkChargeAndMonoMass( peak.scan.heavy, mono.mass.heavy, charge, mz.ppm.cut, predicted.dist.heavy[(mass.shift+1):length(predicted.dist.heavy)])
+		mono.check <- max(mono.check, mono.check.heavy)
+		if (mono.check == mono.check.heavy) {
+		  peak.scan <- peak.scan.heavy
+		  peak.scan.num <- peak.scan.num.heavy
+		}
         ## calculate ratio of integrated peak area
         ## if we want the H/L ratio, we need to calculate the mono.check for heavy and compare it with the mono.check light, finall take the max one as the mono.check
         if (HL.ratios[j]) {
           ratio <- round((sum(heavy.yes)/sum(light.yes))*correction.factor,digits=2)
-          peak.scan.num <- raw.ECI.heavy[[1]][yes][which.max(heavy.yes)]
-          peak.scan <- getScan(xfile, peak.scan.num, mzrange=c((mono.mass.heavy-2)/charge, mz.heavy+5) )
-          mono.check.heavy <- checkChargeAndMonoMass( peak.scan, mono.mass.heavy, charge, mz.ppm.cut, predicted.dist.heavy[(mass.shift+1):length(predicted.dist.heavy)])
-          mono.check <- max(mono.check, mono.check.heavy)
         } else {
           ratio <- round((sum(light.yes)/sum(heavy.yes))/correction.factor,digits=2)
         }
-        if( singleton.ratio > 0  & ratio > singleton.ratio ) next ## let singleton checker handle this case
+		#e.g. in L/H, whether L/H > singletong.ratio or L/H < singleton.ratio, let singleton checker handle this case
+        if( singleton.ratio > 0  & (ratio > singleton.ratio | ratio < 1/singleton.ratio )) next ## let singleton checker handle this case
         lines(c(low,low),ylimit/10, col="green")
         lines(c(high,high),ylimit/10, col="green")
         text(mean(c(low,high)),max(light.yes,heavy.yes)*1.2,
@@ -402,29 +408,49 @@ for ( i in 1:npages) {
     if (!best.fixed & !is.na(tag.rt) & (singleton.ratio>0) ) { # if no MS2 within a peak pair, try to identify a singleton peak with MS2
       singleton.ms2.match <- T # whether a singleton peak has a matching MS2, e.g., light for light or heavy for heavy
 	  #using HL.ratios to control the HL singleton or LH singleton
-      if (HL.ratios[j]) {
-        if (HL == "light") { singleton.ms2.match <- F } # for singleton heavy, if ms2 is from light, skip
-        mono.single <- mono.mass.heavy
-        raw.ECI.rt.single <- raw.ECI.heavy.rt
-        raw.ECI.single <- raw.ECI.heavy
-        raw.ECI.single.other <- raw.ECI.light
-        k.ms1.int.ratio <- max(k.ms1.int.heavy.v)/max(c(0.01,k.ms1.int.light.v))
-      } else {
-        if (HL == "heavy") { singleton.ms2.match <- F }
-        mono.single <- mono.mass
-        raw.ECI.rt.single <- raw.ECI.light.rt
-        raw.ECI.single <- raw.ECI.light
-        raw.ECI.single.other <- raw.ECI.heavy
-        k.ms1.int.ratio <- max(k.ms1.int.light.v)/max(c(0.01,k.ms1.int.heavy.v))
-      }
+	    #singleton <- "L"
+        if (HL == "light") { 
+			singleton <- "L"  # for singleton heavy, if ms2 is from light, skip
+			#mono.single <- mono.mass.heavy
+			#raw.ECI.rt.single <- raw.ECI.heavy.rt
+			#raw.ECI.single <- raw.ECI.heavy
+			#calculate the ratio of the maximum heavy intensity and the light intensity ratio
+			#k.ms1.int.ratio <- max(k.ms1.int.heavy.v)/max(c(0.01,k.ms1.int.light.v))
+			#if the H/L ratio is small, calculate the L/H ratio to find the L/H singleton
+			#if (k.ms1.int.ratio < 3) {
+			#	singleton <- "L"
+				mono.single <- mono.mass
+				raw.ECI.rt.single <- raw.ECI.light.rt
+				raw.ECI.single <- raw.ECI.light
+				raw.ECI.single.other <- raw.ECI.heavy
+				k.ms1.int.ratio <- max(k.ms1.int.light.v)/max(c(0.01,k.ms1.int.heavy.v))
+		}
+		if (HL == "heavy") {
+			singleton <- "H" 
+			#mono.single <- mono.mass
+			#raw.ECI.rt.single <- raw.ECI.light.rt
+			#raw.ECI.single <- raw.ECI.light
+			#raw.ECI.single.other <- raw.ECI.heavy
+			#k.ms1.int.ratio <- max(k.ms1.int.light.v)/max(c(0.01,k.ms1.int.heavy.v))
+			#if (k.ms1.int.ratio < 3) {
+			#	singleton <- "H"
+			mono.single <- mono.mass.heavy
+			raw.ECI.rt.single <- raw.ECI.heavy.rt
+			raw.ECI.single <- raw.ECI.heavy
+			raw.ECI.single.other <- raw.ECI.light
+			k.ms1.int.ratio <- max(k.ms1.int.heavy.v)/max(c(0.01,k.ms1.int.light.v))
+		}
+      
       n.single.peaks <- 0
-      if (singleton.ms2.match) { # find singleton peaks only when a matching MS2 exists
-        single.peaks <- findSingleChromPeaks(raw.ECI.rt.single, raw.ECI.single[[2]],xlimit, local.xlimit, sn )
-        single.peaks <- single.peaks[-1]
-        n.single.peaks <- length(single.peaks)/2
-      }
-      n.singleton.peaks <- numeric(0)
-      if (n.single.peaks>0) {
+	  #if (singleton.ms2.match) {# find singleton peaks only when a matching MS2 exists
+		single.peaks <- findSingleChromPeaks(raw.ECI.rt.single, raw.ECI.single[[2]],xlimit, local.xlimit, sn )
+		single.peaks <- single.peaks[-1]
+		n.single.peaks <- length(single.peaks)/2
+	  #}
+	  singleton.fixed <- F
+	  n.singleton.peaks <- numeric(0)
+
+      if (n.single.peaks > 0) {
         for (ns in 1:n.single.peaks) {
           low.single <- single.peaks[2*ns-1]
           high.single <- single.peaks[2*ns]
@@ -435,40 +461,59 @@ for ( i in 1:npages) {
           int.yes.single <- raw.ECI.single[[2]][yes.single]
           int.yes.single.other <- raw.ECI.single.other[[2]][yes.single]
           peak.scan.num <- raw.ECI.single[[1]][yes.single][which.max(int.yes.single)]
+		  #for a scan defined by peak.scan.num, get all the mz and intensity between specific mz range
           peak.scan <- getScan(xfile, peak.scan.num, mzrange=c((mono.single-2)/charge,
                                                        (mono.single+10)/charge) )
           mono.check.single <- checkChargeAndMonoMass( peak.scan, mono.single, charge, mz.ppm.cut,
                                                       predicted.dist)
           lines(c(low.single,low.single),ylimit/2,col="green")
           lines(c(high.single,high.single),ylimit/2,col="green")
-          real.singleton.ratio <- round(min(singleton.ratio, sum(int.yes.single)/max(1,sum(int.yes.single.other))), 2)
+		  # if we get the light or heavy singleton we want, calculate it as normal ratio
+		  if ((!HL.ratios[j] & singleton == "H") | (HL.ratios[j] & singleton == "L")) {
+			real.singleton.ratio <- round(max(1/singleton.ratio, sum(int.yes.single.other)/sum(int.yes.single)), 2)
+		  }
+		  # if we get the opposite singleton (e.g. heavy singleton for light ratio), still calculate it as the normal 
+		  if ((!HL.ratios[j] & singleton == "L") | (HL.ratios[j] & singleton == "H")) {
+		    real.singleton.ratio <- round(min(singleton.ratio, sum(int.yes.single)/max(1,sum(int.yes.single.other))), 2)
+		  }
           text(mean(c(low.single,high.single)),max(int.yes.single)*1.2, labels=paste(round(real.singleton.ratio,2),round(mono.check.single,2),sep="/"))
-      #       ## did not pass env score filter
+          #did not pass env score filter
           #if (mono.check.single < env.score.cutoff) next
           npoints.single <- length(yes.single)
-                                        #       ## peak is too narrow with very few time points
+          ## peak is too narrow with very few time points
           if (npoints.single<minimum.peak.points) next
-      #       ##
           #i.ratios[j] <- singleton.ratio
           #r2.v[j] <- 1.0
-          best.mono.check <- mono.check.single
-          best.npoints <- npoints.single
-          best.r2 <- 1.0
-          best.ratio <- real.singleton.ratio ##min(singleton.ratio, sum(int.yes.single)/max(1,sum(int.yes.single.other)))
-          best.light.int <- sum(int.yes.single)
-          best.xlm <- 0
-          best.low <- low.single
-          best.high <- high.single
-          best.light.yes <- 0
-          best.heavy.yes <- 0
-          best.peak.scan.num <- peak.scan.num
+		  if ( !is.na(tag.rt) & tag.rt>=low.single & tag.rt<=high.single) {
+			singleton.fixed <- T
+		  } else {
+			singleton.fixed <- F
+		  }
+		  if ( singleton.fixed | (best.mono.check < 0.95 & mono.check.single >= best.mono.check) | ## better envelope score
+            ( best.mono.check >=0.95 & mono.check.single >=0.95 & max(int.yes.single) > max(best.yes.single))  | ## envelope score equally better, choose a higher peak
+            ( mono.check.single < env.score.cutoff & mono.check.single == best.mono.check & max(int.yes.single) > max(best.yes.single) ) ## envelope score equally worse, choose a higher peak
+            ) {
+			best.mono.check <- mono.check.single
+			best.npoints <- npoints.single
+			best.r2 <- 1.0
+			best.ratio <- real.singleton.ratio ##min(singleton.ratio, sum(int.yes.single)/max(1,sum(int.yes.single.other)))
+			best.light.int <- sum(int.yes.single)
+			best.xlm <- 0
+			best.low <- low.single
+			best.high <- high.single
+			best.yes.single <- int.yes.single
+			best.light.yes <- 0
+			best.heavy.yes <- 0
+			best.peak.scan.num <- peak.scan.num
+			}
 
 
-       #      plot(0,0,xlab="",ylab="",main=paste("Empty ms1 spectrum") )
+          #plot(0,0,xlab="",ylab="",main=paste("Empty ms1 spectrum") )
           n.singleton.peaks <- c(n.singleton.peaks,ns)
           n.ms2.peaks <- n.ms2.peaks + 1
           n.candidate.peaks <- n.candidate.peaks + 1
-          break
+		  
+          if (singleton.fixed) break
         }
       }
       #   if (length(n.singleton.peaks) == 0) {
@@ -489,7 +534,7 @@ for ( i in 1:npages) {
       }
 	  #for singleton plot
       if (best.xlm == 0) {
-        plot(0,0,xlab="",ylab="",main=paste("Singleton Peak Found ! Np = ",npoints.single,sep=""),col.main="red" )
+        plot(0,0,xlab="",ylab="",main=paste("Singleton Peak",singleton," Found ! Np = ",npoints.single,sep=""),col.main="red" )
       } else {
 	  #for pair ratio plot
         plot(best.heavy.yes,best.light.yes,
@@ -639,6 +684,7 @@ for ( i in 1:npages) {
       plot(0,0,xlab="",ylab="",main=paste("Empty ms1 spectrum") )
       #}
     }
+	#cat( paste(i,"success", sep = ":"))
     NP.value[j] <- paste(n.ms2.peaks, n.candidate.peaks,
                          format(max(k.ms1.int.light.v), digits=1, scientific=T),
                          format(noise.light, digits=1, scientific=T),

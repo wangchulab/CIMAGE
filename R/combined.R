@@ -227,14 +227,35 @@ for ( i in 1:nset) {
   valid <- valid & !is.na(ratio[,i])
 }
 # linear regression ratio is at the 1st column
-ratio <- ratio[valid,seq(1,nset)]
+ ratio <- ratio[valid,seq(1,nset)]
 
 if ( is.vector(ratio) ) {
   ratio <- matrix( ratio, byrow=T,ncol=1 )
   colnames(ratio) <- colnames(out.num.matrix)[1]
 }
+# find & remove outliers
+#outliers <- boxplot(ratio)$out
+#outliers_percent <- paste(length(outliers),length(ratio_original), sep="/")
+#ratio <- setdiff(ratio, outliers)
+# calculate the mean and sd
+mu <- mean(ratio)
+sigma <- sd(ratio)
+reference.data <- rnorm(length(ratio),mu, sigma)
+r.order <- do.call("order", data.frame(reference.data))
+reference.data.new <- reference.data[r.order]
+x.lm <- lsfit( x=ratio, y=reference.data,intercept=F )
+r2 <- round(as.numeric(ls.print(x.lm,print.it=F)$summary[1,2]),digits=2)
+#p_value <- ks.test(reference.data, ratio)$p.value
 hist(ratio,xlim=c(0,2),breaks=seq(min(ratio),max(ratio)+0.02,by=0.02),freq=F)
-lines(density(ratio),xlim=c(0,2))
+#simulate gaussian distribution and add to the picture
+x = seq(from=0,to=2.0,by=0.005)
+pdf = dnorm(x, mu, sigma)
+lines(pdf ~ x,xlim=c(0,2), col = "green")
+#add vertical line at the mean position
+abline(v= mu,col="red")
+#add comment for the mean,sd and R2
+text(1.5,2, labels= paste("mean=", round(mu,3), ";\nsd=", round(sigma,3), ";\nR2=", r2,sep=""))
+#title("combined_histogram_IR")
 dev.off()
 
 png("combined_histogram_LR.png")
@@ -250,8 +271,28 @@ if ( is.vector(ratio) ) {
   ratio <- matrix( ratio, byrow=T,ncol=1 )
   colnames(ratio) <- colnames(out.num.matrix)[1]
 }
+#calculate the mean and the sd
+mu <- mean(ratio)
+sigma <- sd(ratio)
+#simulate the gaussian distribution data according the mean and sigma
+reference.data <- rnorm(length(ratio),mu, sigma)
+#re-order the simulated data
+r.order <- do.call("order", data.frame(reference.data))
+reference.data.new <- reference.data[r.order]
+#do linear fitting for the simulated data and observed data
+x.lm <- lsfit( x=ratio, y=reference.data.new,intercept=F )
+r2 <- round(as.numeric(ls.print(x.lm,print.it=F)$summary[1,2]),digits=2)
+#plot the histogram 
 hist(ratio,xlim=c(0,2),breaks=seq(min(ratio),max(ratio)+0.02,by=0.02),freq=F)
-lines(density(ratio),xlim=c(0,2))
+#simulate gaussian distribution and add to the picture
+x = seq(from=0,to=2.0,by=0.005)
+pdf = dnorm(x, mu, sigma)
+lines(pdf ~ x,xlim=c(0,2), col = "green")
+#add vertical line at the mean position
+abline(v= mu,col="red")
+#add comment for the mean,sd and R2
+text(1.5,2, labels= paste("mean=", round(mu,3), ";\nsd=", round(sigma,3), ";\nR2=", r2, sep=""))
+#title("combined_histogram_LR")
 dev.off()
 
 png("combined_IR.png")
